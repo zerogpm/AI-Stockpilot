@@ -13,6 +13,8 @@ You need two things installed:
 
 ## First Time Setup
 
+Clone the repo, then run `setup.sh`. This single script does everything for you — it installs all the dependencies (backend and frontend), and asks for your Anthropic API key so the AI analysis feature works. You only need to do this once.
+
 ```
 $ git clone <your-repo-url>
 $ cd stocks
