@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import { getStockData, getNewsForSymbol } from '../services/yahooFinance.js';
+import { getStockData, getNewsForSymbol, getREITFundamentals } from '../services/yahooFinance.js';
 import { calculateFairValueSeries } from '../utils/valuation.js';
 import { streamAnalysis } from '../services/claude.js';
+import { calculateREITMetrics } from '../utils/reitMetrics.js';
 
 const router = Router();
 
@@ -30,7 +31,7 @@ function getAssetType(data) {
   return 'stock';
 }
 
-function buildREITPrompt(stock, news) {
+function buildREITPrompt(stock, news, reitMetrics) {
   const p = stock.price || {};
   const fd = stock.financialData || {};
   const sd = stock.summaryDetail || {};
@@ -42,7 +43,33 @@ function buildREITPrompt(stock, news) {
     .map((n, i) => `${i + 1}. ${n.title} (${n.publisher})`)
     .join('\n');
 
-  return `You are a professional REIT analyst. Analyze the following REIT data and provide a structured assessment. Note: FFO/AFFO data is not available, so focus on the metrics provided.
+  const hasFFO = reitMetrics?.ffo != null;
+  const preamble = hasFFO
+    ? 'Use the FFO-based metrics (FFO payout ratio, P/FFO) for valuation and dividend sustainability — these are the correct metrics for REITs. The GAAP P/E ratio is distorted by non-cash depreciation on real estate assets and should not drive your analysis.'
+    : 'CRITICAL: FFO/AFFO data is unavailable. The GAAP payout ratio and P/E are NOT valid measures for REITs due to non-cash depreciation distortions. Do NOT cite the GAAP payout ratio as evidence of dividend risk. Instead, assess dividend sustainability using dividend yield trends, debt levels, revenue growth, and free cash flow.';
+
+  let ffoSection = '';
+  if (hasFFO) {
+    const pFFO = reitMetrics.ffoPerShare && p.regularMarketPrice
+      ? (p.regularMarketPrice / reitMetrics.ffoPerShare).toFixed(2)
+      : 'N/A';
+    ffoSection = `
+- **FFO (Annual):** ${formatLargeNumber(reitMetrics.ffo)}
+- **FFO/Share:** $${reitMetrics.ffoPerShare?.toFixed(2) ?? 'N/A'}
+- **P/FFO:** ${pFFO}
+- **FFO Payout Ratio:** ${reitMetrics.ffoPayoutRatio != null ? (reitMetrics.ffoPayoutRatio * 100).toFixed(1) + '%' : 'N/A'}`;
+  } else {
+    ffoSection = `
+- **Payout Ratio (GAAP — unreliable for REITs):** ${sd.payoutRatio != null ? (sd.payoutRatio * 100).toFixed(1) + '%' : 'N/A'}`;
+  }
+
+  const valuationInstruction = hasFFO
+    ? 'Paragraph analyzing the REIT using FFO-based metrics: P/FFO relative to sector averages, FFO payout ratio for dividend sustainability, dividend yield attractiveness, P/B ratio relative to NAV, debt levels, and technical positioning.'
+    : 'Paragraph analyzing the REIT\'s dividend yield attractiveness, P/B ratio relative to NAV, debt levels, free cash flow coverage, and technical positioning. Note that GAAP P/E and payout ratio are unreliable for REITs due to non-cash depreciation distortions.';
+
+  return `You are a professional REIT analyst. Analyze the following REIT data and provide a structured assessment.
+
+${preamble}
 
 ## REIT Data
 - **Company:** ${p.shortName || p.longName || 'Unknown'} (${p.symbol || 'N/A'})
@@ -52,13 +79,12 @@ function buildREITPrompt(stock, news) {
 
 ## Key REIT Metrics
 - **Dividend Yield:** ${pct(sd.dividendYield)}
-- **Dividend Rate:** $${sd.dividendRate?.toFixed(2) ?? 'N/A'} per share
-- **Payout Ratio:** ${sd.payoutRatio != null ? (sd.payoutRatio * 100).toFixed(1) + '%' : 'N/A'}
+- **Dividend Rate:** $${sd.dividendRate?.toFixed(2) ?? 'N/A'} per share${ffoSection}
 - **P/B Ratio (NAV proxy):** ${ks.priceToBook?.toFixed(2) ?? 'N/A'}
-- **Debt/Equity:** ${fd.debtToEquity?.toFixed(2) ?? 'N/A'}
+- **Debt/Equity:** ${fd.debtToEquity?.toFixed(2) ?? 'N/A'} (REIT sector typical range: 80-150%; below 100% is conservative)
 
 ## Valuation Context
-- **Trailing P/E:** ${sd.trailingPE?.toFixed(2) ?? 'N/A'} (note: P/E is less meaningful for REITs — FFO-based metrics are preferred but unavailable)
+- **Trailing P/E:** ${sd.trailingPE?.toFixed(2) ?? 'N/A'} (note: P/E is less meaningful for REITs — FFO-based metrics are preferred)
 - **Forward P/E:** ${ks.forwardPE?.toFixed(2) ?? 'N/A'}
 - **Revenue Growth (YoY):** ${pct(fd.revenueGrowth)}
 - **Profit Margin:** ${pct(fd.profitMargins)}
@@ -82,21 +108,21 @@ Based on this data, provide your analysis as a JSON object with this exact struc
   "verdict": "UNDERVALUED" | "OVERVALUED" | "FAIR_VALUE",
   "confidence": "HIGH" | "MEDIUM" | "LOW",
   "summary": "2-3 sentence overall assessment of this REIT, focusing on dividend sustainability and value",
-  "valuation_analysis": "Paragraph analyzing the REIT's dividend yield attractiveness, P/B ratio relative to NAV, debt levels, payout sustainability, and technical positioning. Explain why P/E is less relevant and what the available metrics suggest.",
+  "valuation_analysis": "${valuationInstruction}",
   "risks": ["risk1", "risk2", "risk3"],
   "catalysts": ["catalyst1", "catalyst2"],
   "forecasts": {
     "3m": {
       "price_target": { "low": number, "base": number, "high": number },
-      "summary": "2-3 sentence 3-month outlook"
+      "summary": "2-3 sentence 3-month outlook. Derive targets from: technical support/resistance (52-week range, moving averages), P/FFO multiple expansion/compression scenarios, and dividend yield target ranges."
     },
     "6m": {
       "price_target": { "low": number, "base": number, "high": number },
-      "summary": "2-3 sentence 6-month outlook"
+      "summary": "2-3 sentence 6-month outlook. Base target on P/FFO reversion to sector mean. Low target on yield compression scenario. High target on multiple expansion."
     },
     "12m": {
       "price_target": { "low": number, "base": number, "high": number },
-      "summary": "2-3 sentence 12-month outlook"
+      "summary": "2-3 sentence 12-month outlook. Include total return perspective (price appreciation + yield). Ensure the low-to-high range spans at least 15-20% to reflect realistic 12-month uncertainty."
     }
   }
 }
@@ -285,11 +311,22 @@ router.post('/', async (req, res) => {
     };
 
     const assetType = getAssetType({ price: data.price, summaryProfile: data.summaryProfile });
+
+    let reitMetrics = null;
+    if (assetType === 'reit') {
+      try {
+        const fundamentals = await getREITFundamentals(upperSymbol);
+        reitMetrics = calculateREITMetrics(fundamentals);
+      } catch (err) {
+        console.warn(`Could not fetch REIT fundamentals for ${upperSymbol}:`, err.message);
+      }
+    }
+
     let prompt;
     if (assetType === 'etf') {
       prompt = buildETFPrompt(stock, news);
     } else if (assetType === 'reit') {
-      prompt = buildREITPrompt(stock, news);
+      prompt = buildREITPrompt(stock, news, reitMetrics);
     } else {
       prompt = buildPrompt(stock, chart, news);
     }
@@ -317,3 +354,4 @@ router.post('/', async (req, res) => {
 });
 
 export default router;
+export { formatLargeNumber, pct, isREIT, getAssetType };

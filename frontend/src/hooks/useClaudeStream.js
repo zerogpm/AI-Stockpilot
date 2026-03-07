@@ -1,13 +1,48 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { streamAnalysis } from '../api/stockApi';
 
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+const CACHE_KEY_PREFIX = 'analysis_';
+
+function getCached(symbol) {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY_PREFIX + symbol);
+    if (!raw) return null;
+    const entry = JSON.parse(raw);
+    if (Date.now() - entry.timestamp < CACHE_TTL) return entry;
+    localStorage.removeItem(CACHE_KEY_PREFIX + symbol);
+    return null;
+  } catch { return null; }
+}
+
+function setCached(symbol, analysis) {
+  localStorage.setItem(CACHE_KEY_PREFIX + symbol, JSON.stringify({ analysis, timestamp: Date.now() }));
+}
+
+export { getCached, setCached };
+
 export function useClaudeStream() {
   const [rawText, setRawText] = useState('');
   const [analysis, setAnalysis] = useState(null);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState(null);
+  const [cached, setCachedState] = useState(false);
   const cancelRef = useRef(null);
   const rawTextRef = useRef('');
+
+  const loadCachedAnalysis = useCallback((symbol) => {
+    const entry = getCached(symbol);
+    if (entry) {
+      setAnalysis(entry.analysis);
+      setError(null);
+      setRawText('');
+      setCachedState(true);
+      return true;
+    }
+    setAnalysis(null);
+    setCachedState(false);
+    return false;
+  }, []);
 
   const startAnalysis = useCallback((symbol) => {
     if (cancelRef.current) cancelRef.current();
@@ -16,6 +51,7 @@ export function useClaudeStream() {
     setAnalysis(null);
     setStreaming(true);
     setError(null);
+    setCachedState(false);
     rawTextRef.current = '';
 
     cancelRef.current = streamAnalysis(
@@ -32,7 +68,9 @@ export function useClaudeStream() {
           if (text.startsWith('```')) {
             text = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
           }
-          setAnalysis(JSON.parse(text));
+          const parsed = JSON.parse(text);
+          setAnalysis(parsed);
+          setCached(symbol, parsed);
         } catch {
           setError('Failed to parse Claude response as JSON');
         }
@@ -48,5 +86,5 @@ export function useClaudeStream() {
     return () => cancelRef.current?.();
   }, []);
 
-  return { rawText, analysis, streaming, error, startAnalysis };
+  return { rawText, analysis, streaming, error, cached, startAnalysis, loadCachedAnalysis };
 }

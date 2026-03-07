@@ -39,6 +39,19 @@ export async function getStockData(symbol, { interval = '1mo' } = {}) {
   };
 }
 
+export async function getREITFundamentals(symbol) {
+  const twoYearsAgo = new Date();
+  twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+
+  const result = await yahooFinance.fundamentalsTimeSeries(symbol, {
+    period1: twoYearsAgo,
+    type: 'annual',
+    module: 'all',
+  });
+
+  return result;
+}
+
 export async function searchSymbols(query) {
   const result = await yahooFinance.search(query);
   return (result.quotes || []).slice(0, 5).map((q) => ({

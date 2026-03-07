@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useClaudeStream } from "../hooks/useClaudeStream";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,11 @@ const VERDICT_CONFIG = {
 };
 
 export default function ClaudeAnalysis({ symbol }) {
-  const { analysis, streaming, error, startAnalysis } = useClaudeStream();
+  const { analysis, streaming, error, cached, startAnalysis, loadCachedAnalysis } = useClaudeStream();
+
+  useEffect(() => {
+    if (symbol) loadCachedAnalysis(symbol);
+  }, [symbol, loadCachedAnalysis]);
 
   if (!symbol) return null;
 
@@ -35,11 +39,11 @@ export default function ClaudeAnalysis({ symbol }) {
           <h2 className="text-lg font-bold text-foreground">AI Analysis</h2>
           <Button
             onClick={() => startAnalysis(symbol)}
-            disabled={streaming}
+            disabled={streaming || cached}
             size="lg"
             className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-200 text-white"
           >
-            {streaming ? "Analyzing..." : "Analyze Stock"}
+            {streaming ? "Analyzing..." : cached ? "Cached" : "Analyze Stock"}
           </Button>
         </div>
 
