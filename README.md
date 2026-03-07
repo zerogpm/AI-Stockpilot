@@ -2,51 +2,96 @@
 
 Search any stock, see valuation charts, key metrics, and get AI-powered analysis from Claude.
 
-## First Time Setup
+## Before You Start
 
-You need two things before starting:
+You need two things installed:
 
 1. **Node.js** — [Download here](https://nodejs.org/) (pick the LTS version, click Next through the installer)
 2. **Anthropic API key** — Sign up at [console.anthropic.com](https://console.anthropic.com/), go to API Keys, create one
 
 **Windows users:** Use Git Bash for all commands below (it comes with [Git for Windows](https://git-scm.com/downloads)). Do NOT use Command Prompt or PowerShell.
 
-Then run:
+## First Time Setup
 
-```bash
-git clone <your-repo-url>
-cd stocks
-bash setup.sh
+```
+$ git clone <your-repo-url>
+$ cd stocks
+
+$ bash setup.sh
+
+=== Stock Analysis Dashboard Setup ===
+
+Node.js v22.x.x found
+
+Installing backend dependencies...
+added 150 packages in 5s
+
+Installing frontend dependencies...
+added 230 packages in 8s
+
+No .env file found. Let's set one up.
+
+Enter your Anthropic API key: sk-ant-xxxxx-your-key-here
+
+.env file created.
+
+=== Setup complete! ===
+
+To start the app:  ./start.sh
+To stop the app:   ./stop.sh
 ```
 
-The setup script will:
-- Install all dependencies for you
-- Ask for your API key and save it
+Now start it:
 
-When it's done, start the app:
+```
+$ ./start.sh
 
-```bash
-./start.sh
+Stock Analysis Dashboard started!
+  Backend:  http://localhost:3001
+  Frontend: http://localhost:5173
+
+Run ./stop.sh to stop both servers.
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+Open [http://localhost:5173](http://localhost:5173) in your browser. Done!
 
 ## Updating
 
-When there's a new version:
+When there's a new version, three commands:
 
-```bash
-git pull
-bash setup.sh
-./start.sh
+```
+$ git pull
+Already up to date.   (or shows updated files)
+
+$ bash setup.sh
+
+=== Stock Analysis Dashboard Setup ===
+
+Node.js v22.x.x found
+
+Installing backend dependencies...
+up to date in 1s
+
+Installing frontend dependencies...
+up to date in 1s
+
+Existing .env found — skipping API key setup.
+
+=== Setup complete! ===
+
+$ ./start.sh
 ```
 
-That's it. The setup script handles everything.
+Your API key is kept. Only dependencies get updated.
 
 ## Stopping
 
-```bash
-./stop.sh
+```
+$ ./stop.sh
+
+Stopped process 12345
+Stopped process 12346
+App stopped.
 ```
 
 ## Troubleshooting
