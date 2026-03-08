@@ -30,6 +30,52 @@
 - Async/await only, no .then() chains
 - All Claude API calls stream responses
 
+## Frontend Design Guidelines
+
+### Theme
+- Dark/light via `.dark` class on root; components use `isDark` prop or `theme === 'dark'`
+- Color tokens in `frontend/src/index.css` (OKLch format)
+- For inline theme-aware colors (charts, canvas), use ternary: `isDark ? '#334155' : '#e2e8f0'`
+
+### Colors (semantic)
+- Positive values (gains, buy): `text-green-500`
+- Negative values (losses, sell): `text-red-500`
+- Warning/neutral: `text-yellow-600`
+- Muted/secondary text: `text-muted-foreground`
+- Primary accent: violet (`bg-violet-600`, `ring-violet-500`)
+
+### Buttons
+- Use `<Button>` from `@/components/ui/button` with variants: `default`, `outline`, `ghost`, `destructive`
+- Sizes: `xs`, `sm` (default for controls), `default`, `lg`, `icon`
+- Destructive actions (clear, delete): use visible border + `text-red-400/500` + `font-semibold`, size `sm` or larger — never tiny/subtle
+- Custom inline buttons (date ranges, mode toggles): `rounded-full text-xs font-medium`, violet-600 when active
+
+### Typography
+- Page heading: `text-4xl font-bold`
+- Section heading: `text-lg font-bold`
+- Stat label: `text-xs font-semibold uppercase tracking-wide text-muted-foreground`
+- Stat value: `text-lg font-bold` with semantic color
+- Body: `text-sm` or `text-base`
+
+### Spacing
+- Card padding: `px-3 py-2` (stat cards), `p-4` (sections)
+- Grid gaps: `gap-3` (metrics), `gap-4` (sections)
+- Section margins: `mb-5` or `mb-6`
+- Grids: `grid-cols-2 md:grid-cols-3 lg:grid-cols-4` (responsive)
+
+### Component patterns
+- Stat cards: `rounded-lg border border-border bg-card px-3 py-2` with label above value
+- Semantic card backgrounds: `border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-900/20` (also red, yellow, violet variants)
+- Form inputs: inline with label, `w-28 px-2 py-1 rounded border text-sm font-medium`
+- Checkboxes: `accent-emerald-500`
+- Transitions: `transition-all duration-150` or `transition-colors`
+- Focus: `focus-visible:ring-2 focus-visible:ring-violet-500`
+
+### Key files
+- Color tokens: `frontend/src/index.css`
+- Base components: `frontend/src/components/ui/` (button, card, input, badge, alert)
+- Design reference components: `MetricsGrid.jsx`, `ClaudeAnalysis.jsx`, `BacktestResults.jsx`
+
 ## Adding Stock Analysis Profiles
 
 Stock-specific analysis rules live in `backend/data/stockProfiles.json`. Profiles override default valuation assumptions (P/E baseline, debt interpretation, scenario bounds) and inject industry context into the Claude analysis prompt.

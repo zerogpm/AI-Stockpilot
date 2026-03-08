@@ -21,6 +21,7 @@ export async function getStockData(symbol, { interval = '1mo' } = {}) {
       period1: tenYearsAgo,
       period2: new Date(),
       interval,
+      events: 'div|split|earn',
     }),
   ]);
 

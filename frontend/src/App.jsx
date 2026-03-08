@@ -90,7 +90,7 @@ function App() {
           </header>
           <SearchBar onSearch={handleSearch} />
           <StockHeader data={data.stock} chartData={data.chart} selectedRange={selectedRange} />
-          <ValuationChart chartData={data.chart} theme={theme} selectedRange={selectedRange} onRangeChange={setSelectedRange} />
+          <ValuationChart chartData={data.chart} theme={theme} selectedRange={selectedRange} onRangeChange={setSelectedRange} dividendEvents={data.dividendEvents || []} />
           <MetricsGrid data={data.stock} />
           <DividendHistory dividendInfo={data.dividendInfo} />
           <NewsSection news={data.news} />

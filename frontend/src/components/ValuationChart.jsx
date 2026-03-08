@@ -14,6 +14,8 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { filterByRange } from '@/utils/dateRangeFilter';
+import { calculateBacktest } from '@/utils/backtestCalculator';
+import BacktestResults from './BacktestResults';
 
 function getValuationSeries(fairPE) {
   const peLabel = fairPE ? `${fairPE}x` : '15x';
@@ -103,7 +105,7 @@ function DateRangeSelector({ selected, onChange, isDark, isSMA }) {
   );
 }
 
-export default function ValuationChart({ chartData, theme, selectedRange, onRangeChange }) {
+export default function ValuationChart({ chartData, theme, selectedRange, onRangeChange, dividendEvents }) {
   const isSMA = chartData?.chartType === 'sma';
   const seriesConfig = isSMA ? SMA_SERIES : getValuationSeries(chartData?.fairPE_orange);
 
@@ -142,6 +144,13 @@ export default function ValuationChart({ chartData, theme, selectedRange, onRang
     sma200: true,
   });
 
+  // Chart mode: zoom or backtest
+  const [chartMode, setChartMode] = useState('zoom');
+  const [backtestSelection, setBacktestSelection] = useState({ start: null, end: null });
+  const [backtestResult, setBacktestResult] = useState(null);
+  const [backtestAmount, setBacktestAmount] = useState(10000);
+  const [backtestDrip, setBacktestDrip] = useState(false);
+
   // Drag-to-zoom state
   const [zoomArea, setZoomArea] = useState({ start: null, end: null });
   const [zoomRange, setZoomRange] = useState(null);
@@ -150,6 +159,19 @@ export default function ValuationChart({ chartData, theme, selectedRange, onRang
     if (!zoomRange) return filteredData;
     return filteredData.slice(zoomRange.left, zoomRange.right + 1);
   }, [filteredData, zoomRange]);
+
+  // Run backtest calculation whenever inputs change
+  const runBacktest = useCallback((startDate, endDate, amount, drip) => {
+    const result = calculateBacktest({
+      chartData: filteredData,
+      dividendEvents: dividendEvents || [],
+      startDate,
+      endDate,
+      investmentAmount: amount,
+      reinvestDividends: drip,
+    });
+    setBacktestResult(result);
+  }, [filteredData, dividendEvents]);
 
   const handleMouseDown = useCallback((e) => {
     if (e?.activeLabel) setZoomArea({ start: e.activeLabel, end: null });
@@ -167,7 +189,20 @@ export default function ValuationChart({ chartData, theme, selectedRange, onRang
       setZoomArea({ start: null, end: null });
       return;
     }
-    // Find indices in filteredData
+
+    if (chartMode === 'backtest') {
+      // In backtest mode, select period instead of zooming
+      let startDate = start;
+      let endDate = end;
+      // Support right-to-left drag
+      if (startDate > endDate) [startDate, endDate] = [endDate, startDate];
+      setBacktestSelection({ start: startDate, end: endDate });
+      runBacktest(startDate, endDate, backtestAmount, backtestDrip);
+      setZoomArea({ start: null, end: null });
+      return;
+    }
+
+    // Zoom mode (existing behavior)
     let leftIdx = filteredData.findIndex((d) => d.date === start);
     let rightIdx = filteredData.findIndex((d) => d.date === end);
     if (leftIdx < 0 || rightIdx < 0) {
@@ -183,7 +218,7 @@ export default function ValuationChart({ chartData, theme, selectedRange, onRang
     }
     setZoomRange({ left: leftIdx, right: rightIdx });
     setZoomArea({ start: null, end: null });
-  }, [zoomArea, filteredData]);
+  }, [zoomArea, filteredData, chartMode, backtestAmount, backtestDrip, runBacktest]);
 
   const resetZoom = useCallback(() => setZoomRange(null), []);
 
@@ -245,7 +280,7 @@ export default function ValuationChart({ chartData, theme, selectedRange, onRang
 
   const title = isSMA
     ? 'Technical Analysis (Moving Averages)'
-    : 'FastGraphs-Style Valuation';
+    : 'Valuation';
 
   const subtitle = isSMA
     ? null
@@ -484,19 +519,63 @@ export default function ValuationChart({ chartData, theme, selectedRange, onRang
               labelStyle={{ color: colors.text }}
             />
 
+            {backtestSelection.start && backtestSelection.end && (
+              <ReferenceArea
+                yAxisId="price"
+                x1={backtestSelection.start}
+                x2={backtestSelection.end}
+                strokeOpacity={0.4}
+                fill={isDark ? '#10b981' : '#34d399'}
+                fillOpacity={0.12}
+                stroke={isDark ? '#10b981' : '#059669'}
+              />
+            )}
+
             {zoomArea.start && zoomArea.end && (
               <ReferenceArea
                 yAxisId="price"
                 x1={zoomArea.start}
                 x2={zoomArea.end}
                 strokeOpacity={0.3}
-                fill={isDark ? '#6366f1' : '#818cf8'}
+                fill={chartMode === 'backtest' ? (isDark ? '#10b981' : '#34d399') : (isDark ? '#6366f1' : '#818cf8')}
                 fillOpacity={0.15}
               />
             )}
           </ComposedChart>
         </ResponsiveContainer>
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-3">
+          <div className={[
+            'flex items-center gap-0.5 rounded-lg border px-1 py-0.5',
+            isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-100/50',
+          ].join(' ')}>
+            {['zoom', 'backtest'].map((mode) => (
+              <button
+                key={mode}
+                onClick={() => {
+                  setChartMode(mode);
+                  if (mode === 'zoom') {
+                    setBacktestSelection({ start: null, end: null });
+                    setBacktestResult(null);
+                  } else {
+                    setZoomRange(null);
+                  }
+                }}
+                className={[
+                  'px-3 py-1 rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500',
+                  chartMode === mode
+                    ? mode === 'backtest'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'bg-violet-600 text-white shadow-sm'
+                    : isDark
+                      ? 'text-slate-400 hover:text-slate-200 hover:bg-white/10'
+                      : 'text-slate-500 hover:text-slate-800 hover:bg-black/5',
+                ].join(' ')}
+              >
+                {mode === 'zoom' ? 'Zoom' : 'Backtest'}
+              </button>
+            ))}
+          </div>
           <DateRangeSelector
             selected={selectedRange}
             onChange={(range) => { setZoomRange(null); onRangeChange(range); }}
@@ -518,6 +597,69 @@ export default function ValuationChart({ chartData, theme, selectedRange, onRang
             </button>
           )}
         </div>
+
+        {chartMode === 'backtest' && !backtestResult && (
+          <div className={[
+            'mt-4 rounded-lg border-2 border-dashed p-5 text-center',
+            isDark ? 'border-emerald-700/60 bg-emerald-950/30' : 'border-emerald-300 bg-emerald-50/60',
+          ].join(' ')}>
+            <p className={[
+              'text-base font-semibold mb-3',
+              isDark ? 'text-emerald-400' : 'text-emerald-700',
+            ].join(' ')}>
+              Click and drag on the chart above to select a time period
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <label className="flex items-center gap-1.5 text-sm text-foreground">
+                <span className="text-muted-foreground">Invest $</span>
+                <input
+                  type="number"
+                  value={backtestAmount}
+                  onChange={(e) => setBacktestAmount(Number(e.target.value))}
+                  min={1}
+                  className={[
+                    'w-28 px-2 py-1 rounded border text-sm font-medium',
+                    isDark
+                      ? 'bg-slate-800 border-slate-600 text-white'
+                      : 'bg-white border-slate-300 text-slate-900',
+                  ].join(' ')}
+                />
+              </label>
+              <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={backtestDrip}
+                  onChange={(e) => setBacktestDrip(e.target.checked)}
+                  className="accent-emerald-500"
+                />
+                <span className="text-muted-foreground">Reinvest Dividends (DRIP)</span>
+              </label>
+            </div>
+          </div>
+        )}
+
+        <BacktestResults
+          result={backtestResult}
+          investmentAmount={backtestAmount}
+          onAmountChange={(amount) => {
+            setBacktestAmount(amount);
+            if (backtestSelection.start && backtestSelection.end) {
+              runBacktest(backtestSelection.start, backtestSelection.end, amount, backtestDrip);
+            }
+          }}
+          reinvest={backtestDrip}
+          onReinvestChange={(drip) => {
+            setBacktestDrip(drip);
+            if (backtestSelection.start && backtestSelection.end) {
+              runBacktest(backtestSelection.start, backtestSelection.end, backtestAmount, drip);
+            }
+          }}
+          onClear={() => {
+            setBacktestSelection({ start: null, end: null });
+            setBacktestResult(null);
+          }}
+          isDark={isDark}
+        />
       </CardContent>
     </Card>
   );

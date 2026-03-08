@@ -39,8 +39,13 @@ router.get('/:symbol', async (req, res) => {
     // Check for REIT (needs summaryProfile from the fetch)
     if (!etf && isREIT(data)) {
       assetType = 'reit';
+      const firstDividendEvents = data.dividendEvents;
       // Re-fetch with weekly interval for SMA
       data = await getStockData(symbol, { interval: '1wk' });
+      // Preserve dividend events from the first fetch if the weekly fetch lost them
+      if (!data.dividendEvents?.length && firstDividendEvents?.length) {
+        data.dividendEvents = firstDividendEvents;
+      }
     }
 
     // Check for bank (keeps monthly interval and valuation chart)
@@ -157,6 +162,7 @@ router.get('/:symbol', async (req, res) => {
       },
       chart,
       dividendInfo,
+      dividendEvents: data.dividendEvents || [],
     });
   } catch (err) {
     console.error(`Error fetching stock ${symbol}:`, err.message);

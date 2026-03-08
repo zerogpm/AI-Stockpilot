@@ -28,6 +28,11 @@ Search any stock, see valuation charts, key metrics, and get AI-powered analysis
   - Risk flags and catalysts
   - Price forecast sliders for 3-month, 6-month, and 12-month horizons (bear / base / bull scenarios)
   - Expandable calculation breakdown table
+- **Investment Calculator (Backtest)** — drag on the chart to select a period, enter an investment amount, and see total return, annualized return, dividend income, and share count; toggle Reinvest Dividends (DRIP) to compare compounded vs cash dividend outcomes
+- **Drag-to-Zoom** — click and drag on the chart to zoom into any date range; double-click or press Reset Zoom to restore the full view
+- **Analyst Price Targets** — purple overlay band showing Wall Street consensus target range (low/mean/high) with analyst count
+- **Projected Fair Value** — forward-looking dashed lines for both sector P/E and historical average P/E, plus projected EPS bars based on forward guidance
+- **Period Price Change** — stock header dynamically shows price change for the selected date range (1M, 3M, YTD, 5Y, etc.) instead of only daily change
 - **Dividend History** — letter grade (A+ through F), consecutive increase streak, dividend CAGR, and 10-year annual history table
 - **News Feed** — three most recent headlines with publisher and relative timestamp
 
