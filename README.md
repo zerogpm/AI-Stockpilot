@@ -4,6 +4,33 @@
 
 Search any stock, see valuation charts, key metrics, and get AI-powered analysis from Claude.
 
+## Features
+
+- **Search with Autocomplete** — real-time symbol suggestions with keyboard navigation as you type
+- **Recent Stocks** — quick-access history of your last 5 searches, persisted across sessions
+- **Dark / Light Theme** — one-click toggle, remembers your preference
+- **Stock Header** — current price, daily change, market cap, sector/industry, and US or Canadian stock indicator
+- **Multi-Asset Support** — specialized metrics, charts, and AI prompts for each asset type:
+  - **Stocks** — P/E-based fair value analysis with sector-aware baselines
+  - **ETFs** — expense ratio, top holdings, sector weightings, and 7 sub-category classifiers (Broad Market, Dividend Growth, Growth, Income, Sector, International, Thematic)
+  - **REITs** — FFO-based metrics, dividend sustainability, P/B as NAV proxy
+  - **Banks** — triple-model valuation (P/E + P/B + Dividend Discount Model), ROE analysis
+- **FastGraphs-Style Valuation Chart** — fair value lines (sector P/E and historical average P/E), annual EPS bars, dual Y-axes
+- **Technical Analysis Mode** — switch to 50-day and 200-day Simple Moving Average overlay
+- **Date Range Selector** — 1M, 3M, 6M, YTD, 1Y, 2Y, 5Y, 10Y, ALL
+- **Toggleable Chart Series** — click any legend item to show or hide individual lines
+- **Key Metrics Grid** — 10-11 metric cards that adapt per asset type, with color-coded warnings for high debt, payout ratios, etc.
+- **AI-Powered Analysis (Claude)** — streaming analysis with structured output:
+  - Verdict badge (Undervalued, Overvalued, Fair Value, and more)
+  - Action badge (Strong Buy through Strong Sell)
+  - Confidence indicator (High / Medium / Low)
+  - Computed fair value banner with discount or premium percentage
+  - Risk flags and catalysts
+  - Price forecast sliders for 3-month, 6-month, and 12-month horizons (bear / base / bull scenarios)
+  - Expandable calculation breakdown table
+- **Dividend History** — letter grade (A+ through F), consecutive increase streak, dividend CAGR, and 10-year annual history table
+- **News Feed** — three most recent headlines with publisher and relative timestamp
+
 ## Before You Start
 
 You need two things installed:
