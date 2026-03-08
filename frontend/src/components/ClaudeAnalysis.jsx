@@ -126,6 +126,22 @@ const VERDICT_CONFIG = {
   },
 };
 
+function getActionExplanation(action) {
+  const explanations = {
+    STRONG_BUY: "Strong opportunity \u2014 the stock looks significantly undervalued right now.",
+    BUY: "Good time to buy \u2014 the stock is trading below its fair value.",
+    ACCUMULATE: "Worth adding to your position gradually at these prices.",
+    HOLD: "No rush to buy or sell \u2014 holding your current position makes sense here.",
+    SPECULATIVE_BUY: "Could be worth a small position, but comes with higher uncertainty.",
+    REDUCE: "Consider trimming your position \u2014 valuation looks stretched.",
+    ROTATE_OUT: "Consider moving your money into better-valued alternatives.",
+    SELL: "Good time to sell if you need the money \u2014 you\u2019re locking in gains at a premium valuation. Selling now doesn\u2019t lose you anything.",
+    STRONG_SELL: "The stock looks significantly overpriced \u2014 consider selling soon to protect your gains.",
+    AVOID: "Best to stay away for now \u2014 risk/reward doesn\u2019t look favorable.",
+  };
+  return explanations[action] || null;
+}
+
 export default function ClaudeAnalysis({ symbol, assetType }) {
   const { analysis, streaming, error, cached, computedTargets, fairValue, startAnalysis, loadCachedAnalysis } = useClaudeStream();
 
@@ -176,6 +192,12 @@ export default function ClaudeAnalysis({ symbol, assetType }) {
               {analysis.action && <ActionBadge action={analysis.action} />}
               <ConfidenceBadge confidence={analysis.confidence} />
             </div>
+
+            {analysis.action && getActionExplanation(analysis.action) && (
+              <p className="text-sm text-muted-foreground italic mb-4">
+                {getActionExplanation(analysis.action)}
+              </p>
+            )}
 
             {fairValue && <FairValueBanner fairValue={fairValue} />}
 

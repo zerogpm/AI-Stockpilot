@@ -10,6 +10,7 @@ import { computePriceTargets } from '../utils/priceTargets.js';
 import { isBank } from '../utils/bankClassifier.js';
 import { buildBankPrompt } from '../utils/bankPrompts.js';
 import { computeBankPriceTargets } from '../utils/bankPriceTargets.js';
+import { getStockProfile } from '../utils/stockProfiles.js';
 
 const router = Router();
 
@@ -93,7 +94,7 @@ ${preamble}
 - **Dividend Yield:** ${pct(sd.dividendYield)}
 - **Dividend Rate:** $${sd.dividendRate?.toFixed(2) ?? 'N/A'} per share${ffoSection}
 - **P/B Ratio (NAV proxy):** ${ks.priceToBook?.toFixed(2) ?? 'N/A'}
-- **Debt/Equity:** ${fd.debtToEquity?.toFixed(2) ?? 'N/A'} (REIT sector typical range: 80-150%; below 100% is conservative)
+- **Debt/Equity:** ${fd.debtToEquity != null ? `${fd.debtToEquity.toFixed(2)}% (${(fd.debtToEquity / 100).toFixed(2)}x ratio)` : 'N/A'} (REIT sector typical range: 80-150%; below 100% is conservative)
 
 ## Valuation Context
 - **Trailing P/E:** ${sd.trailingPE?.toFixed(2) ?? 'N/A'} (note: P/E is less meaningful for REITs — FFO-based metrics are preferred)
@@ -147,7 +148,10 @@ Return ONLY the JSON object, no markdown code fences or other text.`;
 
 // buildETFPrompt replaced by etfClassifier + etfPrompts modules
 
-function buildPrompt(stock, chart, news, priceTargets) {
+function buildPrompt(stock, chart, news, priceTargets, profile) {
+  const profileContext = profile?.promptContext || [];
+  const dataOverrides = profile?.dataOverrides || null;
+  const valuationNotes = profile?.valuationNotes || null;
   const p = stock.price || {};
   const fd = stock.financialData || {};
   const sd = stock.summaryDetail || {};
@@ -177,21 +181,29 @@ function buildPrompt(stock, chart, news, priceTargets) {
 
 ## Earnings
 - **EPS (TTM):** $${ks.trailingEps?.toFixed(2) ?? 'N/A'}
-- **Forward EPS Estimate:** $${ks.forwardEps?.toFixed(2) ?? 'N/A'}
+- **Forward EPS Estimate:** $${ks.forwardEps?.toFixed(2) ?? 'N/A'}${dataOverrides?.forwardEPS ? ` (Yahoo estimate) | **Company Guidance:** $${dataOverrides.forwardEPS.range[0]}–$${dataOverrides.forwardEPS.range[1]} (${dataOverrides.forwardEPS.source})
+  ⚠ Use company guidance range as primary reference when it differs from Yahoo estimate.` : ''}
 - **EPS Growth Rate (CAGR):** ${chart.epsGrowthRate ?? 'N/A'}%
 
 ## Financial Health
 - **Revenue Growth (YoY):** ${pct(fd.revenueGrowth)}
-- **Debt/Equity:** ${fd.debtToEquity?.toFixed(2) ?? 'N/A'}
+- **Debt/Equity:** ${fd.debtToEquity != null ? `${fd.debtToEquity.toFixed(2)}% (${(fd.debtToEquity / 100).toFixed(2)}x ratio)` : 'N/A'}
 - **Free Cash Flow:** ${formatLargeNumber(fd.freeCashflow)}
 - **Profit Margin:** ${pct(fd.profitMargins)}
 - **Dividend Yield:** ${pct(sd.dividendYield)}
+${profileContext?.length ? `
+## Industry-Specific Analysis Rules
+${profileContext.map(c => `- ${c}`).join('\n')}
 
+IMPORTANT: Apply these industry-specific rules when interpreting ALL data above. These rules override generic valuation assumptions.
+` : ''}
 ## Fair Value Assessment
 - **Fair Value (${chart.fairPE_orange}x P/E — ${sp.sector || 'default'} baseline):** $${chart.currentFairValue ? (chart.annualEPS[chart.annualEPS.length - 1]?.eps * chart.fairPE_orange)?.toFixed(2) : 'N/A'}
 - **Fair Value (Historical Avg P/E):** $${chart.currentFairValue?.toFixed(2) ?? 'N/A'}
 - **Current Price vs Fair Value Ratio:** ${chart.verdictRatio ?? 'N/A'}x (>1 = overvalued)
-
+${valuationNotes ? `
+⚠ VALUATION NOTE: ${valuationNotes}
+` : ''}
 ## Recent News Headlines
 ${newsSection || 'No recent news available.'}
 ${priceTargets ? `
@@ -273,15 +285,24 @@ router.post('/', async (req, res) => {
     }
 
     const sector = data.summaryProfile?.sector || '';
+    const industry = data.summaryProfile?.industry || '';
+
+    const stockProfile = getStockProfile(upperSymbol, industry);
+
+    const guidanceEPS = stockProfile?.dataOverrides?.forwardEPS?.range;
+    const effectiveForwardEPS = guidanceEPS
+      ? (guidanceEPS[0] + guidanceEPS[1]) / 2
+      : forwardEPS;
 
     const chart = calculateFairValueSeries({
       incomeStatements,
       historicalPrices: data.historicalPrices,
       sharesOutstanding,
-      forwardEPS,
+      forwardEPS: effectiveForwardEPS,
       currentPrice,
       fundamentals,
       sector,
+      sectorPEOverride: stockProfile?.sectorPEOverride ?? undefined,
     });
 
     const stock = {
@@ -308,7 +329,7 @@ router.post('/', async (req, res) => {
     }
 
     let fairValueData = null;
-    if (assetType !== 'etf' && chart.currentFairValue) {
+    if (assetType !== 'etf' && assetType !== 'reit' && chart.currentFairValue) {
       const latestEPS = chart.annualEPS?.length > 0
         ? chart.annualEPS[chart.annualEPS.length - 1].eps : null;
       fairValueData = {
@@ -327,10 +348,11 @@ router.post('/', async (req, res) => {
     if (assetType === 'stock') {
       priceTargets = computePriceTargets({
         currentEPS: data.defaultKeyStatistics?.trailingEps ?? null,
-        forwardEPS: data.defaultKeyStatistics?.forwardEps ?? null,
+        forwardEPS: effectiveForwardEPS,
         epsGrowthRate: chart.epsGrowthRate,
         historicalAvgPE: chart.historicalAvgPE,
         currentPrice,
+        scenarioOverrides: stockProfile?.scenarios ?? undefined,
       });
     } else if (assetType === 'bank') {
       priceTargets = computeBankPriceTargets({
@@ -371,7 +393,7 @@ router.post('/', async (req, res) => {
     } else if (assetType === 'bank') {
       prompt = buildBankPrompt(stock, chart, news, priceTargets);
     } else {
-      prompt = buildPrompt(stock, chart, news, priceTargets);
+      prompt = buildPrompt(stock, chart, news, priceTargets, stockProfile);
     }
 
     // Set SSE headers

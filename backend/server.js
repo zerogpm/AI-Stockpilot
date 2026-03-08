@@ -10,6 +10,7 @@ import cors from 'cors';
 import stockRouter from './routes/stock.js';
 import newsRouter from './routes/news.js';
 import analyzeRouter from './routes/analyze.js';
+import profilesRouter from './routes/profiles.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -20,6 +21,7 @@ app.use(express.json());
 app.use('/api/stock', stockRouter);
 app.use('/api/news', newsRouter);
 app.use('/api/analyze', analyzeRouter);
+app.use('/api/profiles', profilesRouter);
 app.use('/api/search', (await import('./routes/search.js')).default);
 
 app.listen(PORT, '0.0.0.0', () => {

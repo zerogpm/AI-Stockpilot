@@ -5,6 +5,7 @@ import { calculateSMASeries } from '../utils/movingAverage.js';
 import { calculateDividendGrade } from '../utils/dividendGrade.js';
 import { KNOWN_EXPENSE_RATIOS } from '../utils/etfPrompts.js';
 import { isBank } from '../utils/bankClassifier.js';
+import { getStockProfile } from '../utils/stockProfiles.js';
 
 const router = Router();
 
@@ -98,16 +99,24 @@ router.get('/:symbol', async (req, res) => {
       }
 
       const sector = data.summaryProfile?.sector || '';
+      const industry = data.summaryProfile?.industry || '';
+      const stockProfile = getStockProfile(symbol, industry);
+
+      const guidanceEPS = stockProfile?.dataOverrides?.forwardEPS?.range;
+      const effectiveForwardEPS = guidanceEPS
+        ? (guidanceEPS[0] + guidanceEPS[1]) / 2
+        : forwardEPS;
 
       chart = {
         ...calculateFairValueSeries({
           incomeStatements,
           historicalPrices: data.historicalPrices,
           sharesOutstanding,
-          forwardEPS,
+          forwardEPS: effectiveForwardEPS,
           currentPrice,
           fundamentals,
           sector,
+          sectorPEOverride: stockProfile?.sectorPEOverride ?? undefined,
         }),
         chartType: 'valuation',
       };

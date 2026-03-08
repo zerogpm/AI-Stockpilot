@@ -22,6 +22,7 @@ export function calculateFairValueSeries({
   currentPrice,
   fundamentals,
   sector,
+  sectorPEOverride,
 }) {
   // Step 1: Extract annual EPS — prefer fundamentalsTimeSeries (10yr) over incomeStatementHistory (~4yr)
   const epsFromFundamentals = (fundamentals || [])
@@ -88,7 +89,7 @@ export function calculateFairValueSeries({
   }
 
   // FastGraphs: use sector baseline P/E, or growth rate if it exceeds the baseline
-  const sectorBasePE = SECTOR_PE_BASELINES[sector] ?? DEFAULT_SECTOR_PE;
+  const sectorBasePE = sectorPEOverride ?? SECTOR_PE_BASELINES[sector] ?? DEFAULT_SECTOR_PE;
   const fairPE_orange = epsGrowthRate >= sectorBasePE
     ? Math.max(sectorBasePE, epsGrowthRate)
     : sectorBasePE;

@@ -14,13 +14,14 @@ function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
-export function computePriceTargets({ currentEPS, forwardEPS, epsGrowthRate, historicalAvgPE, currentPrice }) {
+export function computePriceTargets({ currentEPS, forwardEPS, epsGrowthRate, historicalAvgPE, currentPrice, scenarioOverrides }) {
   const baseEPS = forwardEPS ?? currentEPS;
   if (baseEPS == null || baseEPS <= 0) return null;
   if (currentEPS == null || currentEPS <= 0) return null;
   if (historicalAvgPE == null || historicalAvgPE <= 0) return null;
 
   const growthRate = epsGrowthRate ?? 0;
+  const overrides = scenarioOverrides || {};
 
   const scenarios = {};
 
@@ -28,8 +29,14 @@ export function computePriceTargets({ currentEPS, forwardEPS, epsGrowthRate, his
     scenarios[horizonKey] = {};
 
     for (const { key: scenarioKey, growthMult, peMult, peMin, peMax } of SCENARIOS) {
-      const scenarioGrowth = Math.max(0, growthRate * growthMult);
-      const scenarioPE = Math.min(peMax, Math.max(peMin, historicalAvgPE * peMult));
+      const ov = overrides[scenarioKey] || {};
+      const effGrowthMult = ov.growthMult ?? growthMult;
+      const effPEMult = ov.peMult ?? peMult;
+      const effPEMin = ov.peMin ?? peMin;
+      const effPEMax = ov.peMax ?? peMax;
+
+      const scenarioGrowth = Math.max(0, growthRate * effGrowthMult);
+      const scenarioPE = Math.min(effPEMax, Math.max(effPEMin, historicalAvgPE * effPEMult));
       const futureEPS = baseEPS * Math.pow(1 + scenarioGrowth / 100, months / 12);
       const targetPrice = futureEPS * scenarioPE;
 

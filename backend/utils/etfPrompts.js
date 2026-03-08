@@ -6,10 +6,22 @@ export const KNOWN_EXPENSE_RATIOS = {
 };
 
 const HISTORICAL_PE_RANGES = {
-  BROAD_MARKET: { label: 'S&P 500 long-term average', low: 16, high: 18 },
-  GROWTH: { label: 'Nasdaq-100 historical average', low: 25, high: 28 },
-  DIVIDEND_GROWTH: { label: 'Dividend-weighted index average', low: 14, high: 17 },
-  INTERNATIONAL: { label: 'MSCI EAFE historical average', low: 13, high: 16 },
+  BROAD_MARKET: {
+    label: 'S&P 500 long-term average', low: 16, high: 18,
+    forwardLabel: 'S&P 500 forward P/E (modern era 2010+)', forwardLow: 17, forwardHigh: 22,
+  },
+  GROWTH: {
+    label: 'Nasdaq-100 historical average', low: 25, high: 28,
+    forwardLabel: 'Nasdaq-100 forward P/E average', forwardLow: 22, forwardHigh: 28,
+  },
+  DIVIDEND_GROWTH: {
+    label: 'Dividend-weighted index average', low: 14, high: 17,
+    forwardLabel: 'Dividend index forward P/E average', forwardLow: 13, forwardHigh: 16,
+  },
+  INTERNATIONAL: {
+    label: 'MSCI EAFE historical average', low: 13, high: 16,
+    forwardLabel: 'MSCI EAFE forward P/E average', forwardLow: 12, forwardHigh: 15,
+  },
 };
 
 function formatLargeNumber(n) {
@@ -95,19 +107,17 @@ export function formatDataBlock(stock, dividendInfo, etfType) {
 
   const sma50 =
     p.regularMarketPrice && sd.fiftyDayAverage
-      ? (p.regularMarketPrice > sd.fiftyDayAverage ? 'Above' : 'Below') +
-        ' (' +
-        ((p.regularMarketPrice / sd.fiftyDayAverage - 1) * 100).toFixed(1) +
-        '%)'
+      ? `$${p.regularMarketPrice.toFixed(2)} vs $${sd.fiftyDayAverage.toFixed(2)} — ` +
+        (p.regularMarketPrice > sd.fiftyDayAverage ? 'Above' : 'Below') +
+        ' by ' +
+        Math.abs((p.regularMarketPrice / sd.fiftyDayAverage - 1) * 100).toFixed(1) + '%'
       : 'N/A';
   const sma200 =
     p.regularMarketPrice && sd.twoHundredDayAverage
-      ? (p.regularMarketPrice > sd.twoHundredDayAverage ? 'Above' : 'Below') +
-        ' (' +
-        ((p.regularMarketPrice / sd.twoHundredDayAverage - 1) * 100).toFixed(
-          1
-        ) +
-        '%)'
+      ? `$${p.regularMarketPrice.toFixed(2)} vs $${sd.twoHundredDayAverage.toFixed(2)} — ` +
+        (p.regularMarketPrice > sd.twoHundredDayAverage ? 'Above' : 'Below') +
+        ' by ' +
+        Math.abs((p.regularMarketPrice / sd.twoHundredDayAverage - 1) * 100).toFixed(1) + '%'
       : 'N/A';
 
   // Top holdings
@@ -150,6 +160,7 @@ export function formatDataBlock(stock, dividendInfo, etfType) {
 - **Beta (3Y):** ${beta?.toFixed(2) ?? 'N/A'}
 - **YTD Return:** ${ytdReturn != null ? (ytdReturn * 100).toFixed(2) + '%' : 'N/A'}
 - **Trailing P/E:** ${sd.trailingPE?.toFixed(2) ?? 'N/A'}${(() => { const ref = HISTORICAL_PE_RANGES[etfType]; return ref ? `\n- **Historical Reference P/E:** ${ref.label}: ${ref.low}-${ref.high}x` : ''; })()}
+- **Forward P/E:** ${(ks.forwardPE ?? sd.forwardPE)?.toFixed(2) ?? 'N/A'}${(() => { const ref = HISTORICAL_PE_RANGES[etfType]; return ref?.forwardLabel ? `\n- **Historical Forward P/E Range:** ${ref.forwardLabel}: ${ref.forwardLow}-${ref.forwardHigh}x` : ''; })()}
 - **Dividend Yield:** ${divYield}
 - **Dividend Rate:** $${sd.dividendRate?.toFixed(2) ?? sd.trailingAnnualDividendRate?.toFixed(2) ?? 'N/A'} per share${divMetrics}
 - **52-Week High:** $${sd.fiftyTwoWeekHigh ?? 'N/A'}
@@ -240,18 +251,20 @@ Today's Date: ${today}
 ---
 
 ## Analysis Instructions
-1. VALUATION FIRST: Compare the current Trailing P/E to the Historical Reference P/E Range provided in the data above. State BOTH numbers explicitly (e.g. "Current P/E of 27x vs the long-term average of 16-18x"). If the current P/E is more than 30% above the midpoint of the historical range, the market is expensive. If within the range, it is fairly valued. If below, it is cheap. Do not call it "undervalued" unless P/E is meaningfully below the historical range. Also reference Shiller CAPE or forward earnings multiples if they strengthen the argument.
-2. MACRO CONTEXT: Identify 1-2 current macro factors (rates, tariffs, growth fears, etc.) that are directly relevant to broad market performance RIGHT NOW. You MUST reference the news headlines — explain what is happening and why it matters for this ETF.
-3. FUND QUALITY: Note the expense ratio and how it compares to competitors (SPY charges 0.09%, IVV charges 0.03%). If the expense ratio data is available, this is a key selling point for index ETFs. Mention tax efficiency of the ETF structure if relevant.
-4. CONCENTRATION: Reference the top holdings and sector weights from the data. Note whether the index is top-heavy (e.g. tech concentration) and what that means for risk.
-5. TECHNICAL POSITION: State where price sits relative to 50-day and 200-day moving averages. Keep this to one sentence — it is secondary for a long-term product.
-6. RISKS: List only risks specific to current macro conditions, not generic boilerplate. "Recession risk" is only valid if there are concrete signals.
-7. CATALYSTS: Must be specific and current — cite concrete events, data releases, or policy decisions. BANNED generic catalysts: "Fed pivot", "earnings growth", "AI tailwinds", "long-term market returns". If you cannot name a specific upcoming catalyst, say there are no near-term catalysts and that is fine for a long-term holding.
-8. VERDICT: Give a Buy / Hold / Avoid with a time horizon. A broad market ETF is almost never a Sell — distinguish between "good long-term entry" vs "better entry likely if you are patient."
-9. PRICE FORECASTS: Each forecast MUST state the macro assumption behind it (e.g. "Base case assumes no recession and 2 rate cuts"). Do not give targets without stating what scenario produces them.
+1. PRICE CONTEXT: Begin by stating the current price/NAV explicitly (e.g. "VOO is currently trading at $618.43"). This anchors the entire analysis for the reader.
+2. VALUATION CONTEXT: Compare BOTH the trailing P/E AND forward P/E to their respective historical reference ranges provided in the data above. State all numbers explicitly (e.g. "Trailing P/E of 27x vs the long-term average of 16-18x; forward P/E of 21x vs the modern-era forward average of 17-22x"). The forward P/E is a more actionable measure because it reflects expected earnings growth. If forward P/E is within or near its historical range even while trailing P/E looks elevated, this suggests the market is expensive on a trailing basis but may be more reasonably valued on a forward basis. If forward P/E is N/A, note this and rely on trailing P/E with appropriate caveats. Also reference Shiller CAPE if it strengthens the argument.
+3. MACRO CONTEXT: Identify 1-2 current macro factors (rates, tariffs, growth fears, etc.) that are directly relevant to broad market performance RIGHT NOW. You MUST reference the news headlines — explain what is happening and why it matters for this ETF.
+4. FUND QUALITY: Note the expense ratio and how it compares to competitors (SPY charges 0.09%, IVV charges 0.03%). If the expense ratio data is available, this is a key selling point for index ETFs. Mention tax efficiency of the ETF structure if relevant.
+5. CONCENTRATION: Reference the top holdings and sector weights from the data. Note whether the index is top-heavy (e.g. tech concentration) and what that means for risk.
+6. TECHNICAL POSITION: State where price sits relative to 50-day and 200-day moving averages. Keep this to one sentence — it is secondary for a long-term product.
+7. RISKS: List only risks specific to current macro conditions, not generic boilerplate. "Recession risk" is only valid if there are concrete signals.
+8. CATALYSTS: Must be specific and current — cite concrete events, data releases, or policy decisions. BANNED generic catalysts: "Fed pivot", "earnings growth", "AI tailwinds", "long-term market returns". If you cannot name a specific upcoming catalyst, say there are no near-term catalysts and that is fine for a long-term holding.
+9. VERDICT: Give a Buy / Hold / Avoid with a time horizon. A broad market ETF is almost never a Sell — distinguish between "good long-term entry" vs "better entry likely if you are patient."
+10. PRICE FORECASTS: Each forecast MUST state the macro assumption behind it (e.g. "Base case assumes no recession and 2 rate cuts"). Do not give targets without stating what scenario produces them.
 
 HARD CONSTRAINTS:
 - Do NOT spend more than one subordinate clause on dividend yield. This is a broad market ETF, not an income product.
+- If both trailing P/E and forward P/E data are available, you MUST discuss both. Do not present trailing P/E alone as the complete valuation picture.
 - Broad market ETFs reflect the ENTIRE economy. During ANY period of macro uncertainty (rate changes, tariff disputes, geopolitical risk, recession fears, market selloffs referenced in news), confidence MUST be MEDIUM or LOW, never HIGH. The bar for HIGH confidence on a broad market ETF is: P/E at or below the historical average AND macro conditions clearly supportive with no active disruptions.
 
 ${UNIVERSAL_RULES}
@@ -263,7 +276,7 @@ ${buildJSONInstruction({
   sections: [
     {
       title: 'Valuation Analysis',
-      desc: '2-3 sentences comparing current P/E to the historical reference range (cite both numbers), macro context, and fund quality (expense ratio, tax efficiency). Do NOT discuss dividend yield here.',
+      desc: '2-3 sentences comparing BOTH trailing and forward P/E to their historical reference ranges (cite all numbers). Note whether forward P/E tells a different story than trailing. Include fund quality (expense ratio). Do NOT discuss dividend yield here.',
     },
   ],
   callout: null,

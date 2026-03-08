@@ -1,0 +1,241 @@
+{
+  "industries": {
+    "Aerospace & Defense": {
+      "sectorPEOverride": 22,
+      "fairPERange": [20, 25],
+      "scenarios": {
+        "bear": { "peMult": 0.85, "peMin": 16 },
+        "bull": { "peMult": 1.15, "peMax": 30 }
+      },
+      "promptContext": [
+        "Defense contractors typically trade at 20-25x P/E due to government contract stability, predictable cash flows, and strategic moat. Do NOT compare to generic industrial multiples (18x).",
+        "High Debt/Equity is common from aggressive share buyback programs and pension accounting. Evaluate debt using Net Debt/EBITDA instead. Under CAS (Cost Accounting Standards), pension costs are recoverable through contract pricing.",
+        "Backlog is a critical valuation metric — it represents years of revenue visibility. Growing backlog with flat or slightly declining EPS signals production constraints or contract timing, not weak demand.",
+        "Key metrics to emphasize: backlog size and trend, book-to-bill ratio, FCF yield, program execution risk, international order pipeline."
+      ]
+    },
+    "Semiconductors": {
+      "sectorPEOverride": 25,
+      "fairPERange": [20, 30],
+      "scenarios": {
+        "bear": { "peMult": 0.70, "peMin": 12 },
+        "bull": { "peMult": 1.30, "peMax": 40 }
+      },
+      "promptContext": [
+        "Semiconductors are deeply cyclical. A high P/E at the cycle trough is NORMAL and often signals a buying opportunity — earnings are temporarily depressed. Conversely, a low P/E at the cycle peak may signal overvaluation.",
+        "Evaluate on a through-cycle basis. Use normalized EPS (3-5 year average) rather than single-year trailing EPS for fair value assessment.",
+        "Capex intensity is structural — fabs cost $10-20B+. High capital spending is a competitive necessity, not a red flag.",
+        "Key metrics: inventory levels, book-to-bill ratio, capacity utilization, design win pipeline, end-market exposure (AI/data center, auto, mobile, industrial)."
+      ]
+    },
+    "Oil & Gas Integrated": {
+      "sectorPEOverride": 12,
+      "fairPERange": [8, 14],
+      "scenarios": {
+        "bear": { "peMult": 0.70, "peMin": 6 },
+        "bull": { "peMult": 1.30, "peMax": 18 }
+      },
+      "promptContext": [
+        "P/E ratios are misleading for oil & gas due to commodity price volatility. Use EV/EBITDA (4-7x typical) and Price/Cash Flow as primary valuation metrics.",
+        "Evaluate earnings against the current oil/gas price environment. High earnings at $90+ oil are not sustainable; trough earnings at $50 oil understate long-term potential.",
+        "Debt/Equity should be evaluated in context of reserve value and asset base. Integrated majors have diversified downstream operations that stabilize cash flows.",
+        "Key metrics: reserve replacement ratio, production growth, breakeven oil price, refining margins, dividend coverage from FCF, capital discipline."
+      ]
+    },
+    "Drug Manufacturers - General": {
+      "sectorPEOverride": 18,
+      "fairPERange": [14, 20],
+      "scenarios": {
+        "bear": { "peMult": 0.80, "peMin": 10 },
+        "bull": { "peMult": 1.20, "peMax": 25 }
+      },
+      "promptContext": [
+        "Current earnings do NOT capture pipeline optionality. A pharma company with a strong late-stage pipeline may deserve a premium P/E even if current growth is modest.",
+        "Patent cliff risk is critical — identify key drugs losing exclusivity and revenue at risk. Evaluate the replacement pipeline quality and timing.",
+        "High R&D spending (15-25% of revenue) is a competitive necessity, not waste. Evaluate R&D productivity (new approvals per $B spent) rather than penalizing the expense.",
+        "Key metrics: pipeline stage distribution, patent expiration timeline, revenue concentration in top drugs, pricing power sustainability, biosimilar competition exposure."
+      ]
+    },
+    "Utilities - Regulated Electric": {
+      "sectorPEOverride": 17,
+      "fairPERange": [15, 20],
+      "scenarios": {
+        "bear": { "peMult": 0.85, "peMin": 13 },
+        "bull": { "peMult": 1.15, "peMax": 23 }
+      },
+      "promptContext": [
+        "Regulated utilities have guaranteed returns on equity (typically 9-11% allowed ROE). Low earnings growth (4-6%) is structural and expected — do NOT penalize for slow growth.",
+        "High Debt/Equity (100-150%) is structural and normal for regulated utilities. Rate base assets back the debt. Evaluate using Debt/Rate Base or FFO/Debt instead.",
+        "Dividend yield is the primary return driver. Compare yield to the 10-year Treasury and the utility sector average. A utility yielding below its historical range may be overvalued.",
+        "Key metrics: rate base growth, allowed vs earned ROE, regulatory environment quality, renewable energy capex plans, wildfire/weather risk exposure."
+      ]
+    },
+    "Telecom Services": {
+      "sectorPEOverride": 14,
+      "fairPERange": [10, 16],
+      "scenarios": {
+        "bear": { "peMult": 0.80, "peMin": 7 },
+        "bull": { "peMult": 1.20, "peMax": 20 }
+      },
+      "promptContext": [
+        "High Debt/Equity is structural from massive network infrastructure investment (spectrum licenses, fiber, 5G). Evaluate using Net Debt/EBITDA (2-3x is manageable for telecoms).",
+        "Revenue growth is typically low (0-3%) in mature markets. Focus on ARPU trends and subscriber net adds rather than top-line growth rate.",
+        "Free cash flow after capex is the critical metric. Depreciation significantly exceeds maintenance capex, so reported earnings understate cash generation.",
+        "Key metrics: ARPU, churn rate, subscriber net adds, spectrum holdings, fiber/5G coverage, dividend sustainability from FCF."
+      ]
+    },
+    "Insurance - Diversified": {
+      "sectorPEOverride": 13,
+      "fairPERange": [10, 15],
+      "scenarios": {
+        "bear": { "peMult": 0.80, "peMin": 8 },
+        "bull": { "peMult": 1.20, "peMax": 18 }
+      },
+      "promptContext": [
+        "P/E alone is insufficient for insurance companies. Combined ratio (< 100% means underwriting profit) and investment income are equally important drivers.",
+        "Price/Book Value is a more reliable valuation metric for insurance. P/B above 2x typically requires exceptional underwriting discipline or specialty focus.",
+        "Reserve development (favorable = prior year loss estimates revised down) directly impacts earnings quality. One-time reserve releases inflate EPS unsustainably.",
+        "Key metrics: combined ratio, loss ratio, investment portfolio yield, reserve adequacy, book value growth, catastrophe exposure, pricing cycle position (hard vs soft market)."
+      ]
+    },
+    "Tobacco": {
+      "sectorPEOverride": 15,
+      "fairPERange": [10, 16],
+      "scenarios": {
+        "bear": { "peMult": 0.75, "peMin": 8 },
+        "bull": { "peMult": 1.15, "peMax": 20 }
+      },
+      "promptContext": [
+        "Declining cigarette volumes (3-5% annually) are offset by pricing power — revenue and earnings can grow despite volume declines. Evaluate net revenue per unit trend.",
+        "Extremely high Debt/Equity is common from decades of aggressive buybacks. Like defense companies, negative book equity inflates D/E to meaningless levels. Use Net Debt/EBITDA.",
+        "Dividend yield is a core part of total return. High payout ratios (70-80%) are sustainable given predictable cash flows and minimal capex needs.",
+        "Key metrics: cigarette volume decline rate, pricing/mix improvement, reduced-risk product (IQOS, vape) adoption, regulatory risk, litigation exposure, emerging market volume growth."
+      ]
+    }
+  },
+  "tickers": {
+    "LMT": {
+      "industry": "Aerospace & Defense",
+      "additionalContext": [
+        "Trades at 20-25x P/E, NOT generic industrial multiples (15-18x). Premium is justified by long-term government contracts and stable cash flows.",
+        "High Debt/Equity appears extreme because aggressive share buybacks reduce accounting equity. Evaluate debt using cash flow coverage (Net Debt/EBITDA, FCF/Debt), not D/E ratio.",
+        "Key metrics: backlog size ($150B-$200B+ typical), book-to-bill ratio (orders vs deliveries), operating margin on programs, free cash flow — not just EPS.",
+        "Major programs: F-35 fighter jet (largest defense program globally, 3,000+ planned aircraft), HIMARS rocket system, missile defense systems (PAC-3, THAAD), Space (Orion, GPS III), Classified programs.",
+        "Revenue visibility extends 5-10 years due to government contract structure. Flat EPS with record backlog signals production ramp constraints, not demand weakness."
+      ],
+      "dataOverrides": {
+        "forwardEPS": {
+          "range": [29.35, 30.25],
+          "source": "FY2026 company guidance (Q4 2025 earnings, Jan 2026)"
+        }
+      },
+      "valuationNotes": "FY2025 trailing EPS ($21.49) is temporarily depressed. Weight FY2026 company guidance ($29.35-$30.25) heavily for fair value. Do not anchor fair value to trailing EPS alone when a large EPS recovery is guided. Segment operating profit guided +25% YoY for 2026."
+    },
+    "RTX": {
+      "industry": "Aerospace & Defense",
+      "additionalContext": [
+        "Dual exposure: defense (Raytheon missiles, Pratt & Whitney military engines) and commercial aerospace (Pratt & Whitney GTF, Collins Aerospace). Evaluate segments separately.",
+        "GTF engine powder metal contamination issue — monitor inspection/removal timeline and financial impact."
+      ]
+    },
+    "NOC": {
+      "industry": "Aerospace & Defense",
+      "additionalContext": [
+        "B-21 Raider stealth bomber is the key growth program. Sentinel ICBM program provides decades of revenue visibility.",
+        "Highest classified revenue percentage among major defense primes — actual growth may exceed reported metrics."
+      ]
+    },
+    "GD": {
+      "industry": "Aerospace & Defense",
+      "additionalContext": [
+        "Unique mix: defense (submarines, combat vehicles, IT services) plus Gulfstream business jets. Business jet cycle affects margins differently than pure defense peers."
+      ]
+    },
+    "BA": {
+      "industry": "Aerospace & Defense",
+      "additionalContext": [
+        "Currently in a turnaround phase — production quality issues and regulatory scrutiny on 737 MAX. Evaluate on recovery trajectory, not steady-state metrics.",
+        "Defense segment is secondary to commercial aviation. Use forward delivery rates and order book, not trailing P/E."
+      ]
+    },
+    "LHX": {
+      "industry": "Aerospace & Defense"
+    },
+    "NVDA": {
+      "industry": "Semiconductors",
+      "additionalContext": [
+        "AI/data center GPU demand is structurally different from traditional semiconductor cyclicality. Revenue concentration in hyperscaler customers creates both opportunity and risk.",
+        "Forward P/E may be more relevant than trailing P/E given hypergrowth phase. Evaluate on PEG ratio and data center TAM penetration."
+      ]
+    },
+    "AMD": {
+      "industry": "Semiconductors",
+      "additionalContext": [
+        "Gaining market share in data center CPUs (EPYC) and GPUs (MI series). Evaluate share gain trajectory against Intel and NVIDIA."
+      ]
+    },
+    "INTC": {
+      "industry": "Semiconductors",
+      "additionalContext": [
+        "In foundry transformation phase — massive capex for IFS (Intel Foundry Services). Evaluate on turnaround progress, not current depressed margins."
+      ]
+    },
+    "XOM": {
+      "industry": "Oil & Gas Integrated",
+      "additionalContext": [
+        "Pioneer Natural Resources acquisition significantly expanded Permian Basin position. Evaluate on combined production trajectory and synergy realization."
+      ]
+    },
+    "CVX": {
+      "industry": "Oil & Gas Integrated",
+      "additionalContext": [
+        "Hess acquisition added Guyana exposure (Stabroek block) — a world-class low-cost resource. Monitor arbitration outcome with CNOOC."
+      ]
+    },
+    "PFE": {
+      "industry": "Drug Manufacturers - General",
+      "additionalContext": [
+        "Post-COVID revenue cliff — evaluate on base business ex-COVID products. Pipeline execution and Seagen acquisition synergies are critical to re-rating."
+      ]
+    },
+    "JNJ": {
+      "industry": "Drug Manufacturers - General",
+      "additionalContext": [
+        "Post-Kenvue consumer health spinoff, now a pure pharma/medtech company. Evaluate on pharmaceutical pipeline strength and medtech growth trajectory."
+      ]
+    },
+    "NEE": {
+      "industry": "Utilities - Regulated Electric",
+      "additionalContext": [
+        "Dual business: FPL (regulated, Florida) and NextEra Energy Resources (renewable energy). Trades at premium to pure regulated utilities due to renewables growth platform."
+      ]
+    },
+    "DUK": {
+      "industry": "Utilities - Regulated Electric"
+    },
+    "T": {
+      "industry": "Telecom Services",
+      "additionalContext": [
+        "Post-WarnerMedia spinoff, now a pure-play connectivity company. Evaluate on fiber subscriber growth (5M+ passings target) and wireless ARPU trends."
+      ]
+    },
+    "VZ": {
+      "industry": "Telecom Services",
+      "additionalContext": [
+        "Frontier acquisition expands fiber footprint significantly. Evaluate on wireless subscriber quality (postpaid phone net adds) and fixed wireless access growth."
+      ]
+    },
+    "MO": {
+      "industry": "Tobacco",
+      "additionalContext": [
+        "Marlboro brand dominance (>40% US market share) provides pricing power. NJOY acquisition for next-gen products. FDA regulatory decisions are key catalyst/risk."
+      ]
+    },
+    "PM": {
+      "industry": "Tobacco",
+      "additionalContext": [
+        "IQOS heated tobacco leader globally. Swedish Match (ZYN nicotine pouches) acquisition provides best-in-class reduced-risk product portfolio. International revenue base diversifies regulatory risk."
+      ]
+    }
+  }
+}

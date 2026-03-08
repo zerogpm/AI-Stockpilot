@@ -1,34 +1,38 @@
 const KNOWN_TICKERS = {
   BROAD_MARKET: new Set([
     'VOO', 'VTI', 'SPY', 'IVV', 'SPLG', 'SPTM', 'ITOT', 'SCHB', 'SCHX',
-    'VV', 'RSP', 'IWB', 'VONE', 'SPHQ', 'QUAL',
+    'VV', 'RSP', 'IWB', 'VONE', 'SPHQ', 'QUAL', 'IWV', 'DFAC', 'FNILX',
+    'FXAIX', 'VTHR', 'SCHA', 'SWPPX',
   ]),
   DIVIDEND_GROWTH: new Set([
     'SCHD', 'VYM', 'DGRO', 'VIG', 'NOBL', 'SDY', 'DGRW', 'DVY', 'HDV',
-    'SPHD', 'FDL', 'DLN', 'TDIV', 'RDIV',
+    'SPHD', 'FDL', 'DLN', 'TDIV', 'RDIV', 'VIGI', 'DIVB', 'FDVV',
   ]),
   GROWTH: new Set([
     'QQQ', 'QQQM', 'VGT', 'SCHG', 'VUG', 'IWF', 'MGK', 'VONG', 'RPG',
-    'SPYG', 'IVW', 'FTEC', 'IWY', 'IUSG', 'ONEQ',
+    'SPYG', 'IVW', 'FTEC', 'IWY', 'IUSG', 'ONEQ', 'VOOG', 'IWP', 'MTUM',
+    'TECB',
   ]),
   INCOME: new Set([
     'JEPI', 'JEPQ', 'XYLD', 'QYLD', 'RYLD', 'DIVO', 'NUSI', 'SVOL',
-    'SPYI', 'QQQI', 'PFF', 'PFFD', 'HYG', 'JNK',
+    'SPYI', 'QQQI', 'PFF', 'PFFD', 'HYG', 'JNK', 'SPYD', 'USHY', 'VCIT',
+    'LQD', 'BND',
   ]),
   SECTOR: new Set([
     'XLE', 'XLF', 'XLV', 'XLK', 'XLI', 'XLC', 'XLU', 'XLP', 'XLY',
     'XLB', 'XLRE', 'VNQ', 'IYR', 'KRE', 'KBE', 'OIH', 'GDX', 'GDXJ',
     'IBB', 'IHI', 'ITA', 'VDE', 'VFH', 'VHT', 'VIS', 'VAW', 'VCR', 'VPU',
+    'SMH', 'SOXX', 'XBI', 'MJ',
   ]),
   INTERNATIONAL: new Set([
     'VEA', 'EEM', 'VXUS', 'EFA', 'IEMG', 'VWO', 'IXUS', 'IEFA', 'SCZ',
     'SPDW', 'ACWI', 'ACWX', 'EWJ', 'EWZ', 'FXI', 'MCHI', 'INDA', 'EWG',
-    'EWT', 'EWY',
+    'EWT', 'EWY', 'HEFA', 'DGS', 'EMXC', 'VEU',
   ]),
   THEMATIC: new Set([
     'ARKK', 'ARKW', 'ARKG', 'ARKF', 'ARKQ', 'BOTZ', 'ICLN', 'TAN', 'LIT',
     'HACK', 'ROBO', 'BETZ', 'MSOS', 'YOLO', 'MOON', 'DRIV', 'BLOK',
-    'CLOU', 'AIQ', 'IRBO', 'KWEB',
+    'CLOU', 'AIQ', 'IRBO', 'KWEB', 'QCLN', 'ESGU', 'IDRV', 'SNSR',
   ]),
 };
 

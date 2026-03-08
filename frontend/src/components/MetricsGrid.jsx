@@ -39,6 +39,8 @@ function getETFMetrics(sd, ks, fp) {
   return [
     { label: 'Dividend Yield', value: fmt(sd.yield ?? sd.dividendYield, 'pct'), highlight: true },
     { label: 'Expense Ratio', value: fmt(fpExpense ?? sd.annualReportExpenseRatio ?? sd.expenseRatio, 'pct') },
+    { label: 'P/E (TTM)', value: fmt(sd.trailingPE, 'ratio') },
+    { label: 'P/E (Forward)', value: fmt(ks.forwardPE, 'ratio') },
     { label: 'Net Assets', value: sd.totalAssets != null ? fmt(sd.totalAssets, 'dollar') : 'N/A' },
     { label: 'Beta (3Y)', value: fmt(ks.beta3Year ?? sd.beta3Year, 'ratio') },
     { label: 'YTD Return', value: fmt(ks.ytdReturn ?? sd.ytdReturn, 'pct') },
