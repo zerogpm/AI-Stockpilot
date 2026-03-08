@@ -1,7 +1,10 @@
 import { Router } from 'express';
-import { getStockData, searchSymbols } from '../services/yahooFinance.js';
+import { getStockData, searchSymbols, getHistoricalEPS, getETFFundData } from '../services/yahooFinance.js';
 import { calculateFairValueSeries } from '../utils/valuation.js';
 import { calculateSMASeries } from '../utils/movingAverage.js';
+import { calculateDividendGrade } from '../utils/dividendGrade.js';
+import { KNOWN_EXPENSE_RATIOS } from '../utils/etfPrompts.js';
+import { isBank } from '../utils/bankClassifier.js';
 
 const router = Router();
 
@@ -39,6 +42,39 @@ router.get('/:symbol', async (req, res) => {
       data = await getStockData(symbol, { interval: '1wk' });
     }
 
+    // Check for bank (keeps monthly interval and valuation chart)
+    if (!etf && assetType !== 'reit' && isBank({
+      sector: data.summaryProfile?.sector,
+      industry: data.summaryProfile?.industry,
+      ticker: symbol,
+    })) {
+      assetType = 'bank';
+    }
+
+    if (etf) {
+      try {
+        const fundData = await getETFFundData(symbol);
+        data.fundProfile = fundData.fundProfile;
+        data.topHoldings = fundData.topHoldings;
+      } catch (err) {
+        console.warn(`Could not fetch fund data for ${symbol}:`, err.message);
+      }
+
+      // Fallback expense ratio for known ETFs when yahoo doesn't provide it
+      const fpExpense = data.fundProfile?.feesExpensesInvestment?.annualReportExpenseRatio;
+      if (fpExpense == null && data.summaryDetail?.annualReportExpenseRatio == null) {
+        const known = KNOWN_EXPENSE_RATIOS[symbol];
+        if (known != null) {
+          data.summaryDetail = data.summaryDetail || {};
+          data.summaryDetail.annualReportExpenseRatio = known / 100;
+        }
+      }
+    }
+
+    const dividendInfo = data.dividendEvents?.length
+      ? calculateDividendGrade(data.dividendEvents)
+      : null;
+
     let chart;
     if (assetType === 'etf' || assetType === 'reit') {
       chart = calculateSMASeries({
@@ -54,6 +90,15 @@ router.get('/:symbol', async (req, res) => {
       const currentPrice =
         data.price?.regularMarketPrice ?? null;
 
+      let fundamentals = null;
+      try {
+        fundamentals = await getHistoricalEPS(symbol);
+      } catch (err) {
+        console.warn(`Could not fetch fundamentals for ${symbol}:`, err.message);
+      }
+
+      const sector = data.summaryProfile?.sector || '';
+
       chart = {
         ...calculateFairValueSeries({
           incomeStatements,
@@ -61,6 +106,8 @@ router.get('/:symbol', async (req, res) => {
           sharesOutstanding,
           forwardEPS,
           currentPrice,
+          fundamentals,
+          sector,
         }),
         chartType: 'valuation',
       };
@@ -74,9 +121,12 @@ router.get('/:symbol', async (req, res) => {
         defaultKeyStatistics: data.defaultKeyStatistics,
         earningsTrend: data.earningsTrend,
         summaryProfile: data.summaryProfile,
+        fundProfile: data.fundProfile,
+        topHoldings: data.topHoldings,
         assetType,
       },
       chart,
+      dividendInfo,
     });
   } catch (err) {
     console.error(`Error fetching stock ${symbol}:`, err.message);

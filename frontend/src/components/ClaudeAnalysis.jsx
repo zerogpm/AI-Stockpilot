@@ -5,6 +5,59 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+const ACTION_CONFIG = {
+  STRONG_BUY: {
+    className:
+      "bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-300 dark:hover:bg-emerald-900/40",
+    label: "Strong Buy",
+  },
+  BUY: {
+    className:
+      "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-900/40",
+    label: "Buy",
+  },
+  ACCUMULATE: {
+    className:
+      "bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-300 dark:hover:bg-emerald-900/40",
+    label: "Accumulate",
+  },
+  HOLD: {
+    className:
+      "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900/40 dark:text-yellow-300 dark:hover:bg-yellow-900/40",
+    label: "Hold",
+  },
+  AVOID: {
+    className:
+      "bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/40",
+    label: "Avoid",
+  },
+  SPECULATIVE_BUY: {
+    className:
+      "bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-900/40 dark:text-amber-300 dark:hover:bg-amber-900/40",
+    label: "Speculative Buy",
+  },
+  ROTATE_OUT: {
+    className:
+      "bg-orange-100 text-orange-800 hover:bg-orange-100 dark:bg-orange-900/40 dark:text-orange-300 dark:hover:bg-orange-900/40",
+    label: "Rotate Out",
+  },
+  REDUCE: {
+    className:
+      "bg-orange-100 text-orange-800 hover:bg-orange-100 dark:bg-orange-900/40 dark:text-orange-300 dark:hover:bg-orange-900/40",
+    label: "Reduce Exposure",
+  },
+  SELL: {
+    className:
+      "bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/40",
+    label: "Sell",
+  },
+  STRONG_SELL: {
+    className:
+      "bg-red-200 text-red-900 hover:bg-red-200 dark:bg-red-900/60 dark:text-red-200 dark:hover:bg-red-900/60",
+    label: "Strong Sell",
+  },
+};
+
 const VERDICT_CONFIG = {
   UNDERVALUED: {
     className:
@@ -21,16 +74,70 @@ const VERDICT_CONFIG = {
       "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900/40 dark:text-yellow-300 dark:hover:bg-yellow-900/40",
     label: "Fair Value",
   },
+  FAVORABLE_ENTRY: {
+    className:
+      "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-900/40",
+    label: "Favorable Entry",
+  },
+  NEUTRAL: {
+    className:
+      "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900/40 dark:text-yellow-300 dark:hover:bg-yellow-900/40",
+    label: "Neutral",
+  },
+  UNFAVORABLE_ENTRY: {
+    className:
+      "bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/40",
+    label: "Unfavorable Entry",
+  },
+  ATTRACTIVE_YIELD: {
+    className:
+      "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-900/40",
+    label: "Attractive Yield",
+  },
+  FAIR_YIELD: {
+    className:
+      "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900/40 dark:text-yellow-300 dark:hover:bg-yellow-900/40",
+    label: "Fair Yield",
+  },
+  YIELD_TRAP: {
+    className:
+      "bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/40",
+    label: "Yield Trap",
+  },
+  EARLY_ENTRY: {
+    className:
+      "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-900/40",
+    label: "Early Entry",
+  },
+  EXTENDED: {
+    className:
+      "bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/40",
+    label: "Extended",
+  },
+  EARLY_OPPORTUNITY: {
+    className:
+      "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-900/40",
+    label: "Early Opportunity",
+  },
+  FULLY_PRICED: {
+    className:
+      "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900/40 dark:text-yellow-300 dark:hover:bg-yellow-900/40",
+    label: "Fully Priced",
+  },
 };
 
-export default function ClaudeAnalysis({ symbol }) {
-  const { analysis, streaming, error, cached, startAnalysis, loadCachedAnalysis } = useClaudeStream();
+export default function ClaudeAnalysis({ symbol, assetType }) {
+  const { analysis, streaming, error, cached, computedTargets, startAnalysis, loadCachedAnalysis } = useClaudeStream();
 
   useEffect(() => {
     if (symbol) loadCachedAnalysis(symbol);
   }, [symbol, loadCachedAnalysis]);
 
   if (!symbol) return null;
+
+  const isTypedETF = analysis?.etf_type != null;
+  const isLegacyETF = !isTypedETF && analysis?.scenarios != null;
+  const buttonLabel = assetType === 'etf' ? 'Analyze ETF' : assetType === 'bank' ? 'Analyze Bank' : 'Analyze Stock';
 
   return (
     <Card className="mb-5">
@@ -39,11 +146,11 @@ export default function ClaudeAnalysis({ symbol }) {
           <h2 className="text-lg font-bold text-foreground">AI Analysis</h2>
           <Button
             onClick={() => startAnalysis(symbol)}
-            disabled={streaming || cached}
+            disabled={streaming}
             size="lg"
             className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-200 text-white"
           >
-            {streaming ? "Analyzing..." : cached ? "Cached" : "Analyze Stock"}
+            {streaming ? "Analyzing..." : cached ? "Re-analyze" : buttonLabel}
           </Button>
         </div>
 
@@ -54,11 +161,16 @@ export default function ClaudeAnalysis({ symbol }) {
         )}
 
         {streaming && (
-          <div className="flex flex-col items-center justify-center py-12 gap-3">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-200 border-t-violet-600" />
-            <p className="text-sm text-muted-foreground font-medium">
-              Analyzing {symbol}...
-            </p>
+          <div>
+            <div className="flex flex-col items-center justify-center py-8 gap-3">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-200 border-t-violet-600" />
+              <p className="text-sm text-muted-foreground font-medium">
+                Analyzing {symbol}...
+              </p>
+            </div>
+            {computedTargets && (
+              <ComputedForecastTabs computedTargets={computedTargets} />
+            )}
           </div>
         )}
 
@@ -66,6 +178,7 @@ export default function ClaudeAnalysis({ symbol }) {
           <div className="pt-2">
             <div className="flex items-center gap-3 mb-4">
               <VerdictBadge verdict={analysis.verdict} />
+              {analysis.action && <ActionBadge action={analysis.action} />}
               <ConfidenceBadge confidence={analysis.confidence} />
             </div>
 
@@ -73,35 +186,123 @@ export default function ClaudeAnalysis({ symbol }) {
               {analysis.summary}
             </p>
 
-            <Section title="Valuation Analysis">
-              <p className="text-muted-foreground leading-relaxed">
-                {analysis.valuation_analysis}
+            {analysis.news_reconciliation && (
+              <p className="text-sm italic text-muted-foreground mb-5">
+                {analysis.news_reconciliation}
               </p>
-            </Section>
+            )}
 
-            <div className="grid grid-cols-2 gap-5 mb-5">
-              <Section title="Risk Flags">
-                <ul className="pl-5 space-y-1">
-                  {(analysis.risks || []).map((r, i) => (
-                    <li key={i} className="text-red-500 dark:text-red-400">
-                      {r}
-                    </li>
-                  ))}
-                </ul>
-              </Section>
-              <Section title="Catalysts">
-                <ul className="pl-5 space-y-1">
-                  {(analysis.catalysts || []).map((c, i) => (
-                    <li key={i} className="text-green-500 dark:text-green-400">
-                      {c}
-                    </li>
-                  ))}
-                </ul>
-              </Section>
-            </div>
+            {isTypedETF ? (
+              <>
+                {(analysis.analysis_sections || []).map((section, i) => (
+                  <Section key={i} title={section.title}>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {section.content}
+                    </p>
+                  </Section>
+                ))}
 
-            {analysis.forecasts && (
-              <ForecastTabs forecasts={analysis.forecasts} />
+                <div className="grid grid-cols-2 gap-5 mb-5">
+                  <Section title="Risk Flags">
+                    <ul className="pl-5 space-y-1">
+                      {(analysis.risks || []).map((r, i) => (
+                        <li key={i} className="text-red-500 dark:text-red-400">
+                          {r}
+                        </li>
+                      ))}
+                    </ul>
+                  </Section>
+                  <Section title="Catalysts">
+                    <ul className="pl-5 space-y-1">
+                      {(analysis.catalysts || []).map((c, i) => (
+                        <li key={i} className="text-green-500 dark:text-green-400">
+                          {c}
+                        </li>
+                      ))}
+                    </ul>
+                  </Section>
+                </div>
+
+                {analysis.callout && (
+                  <CalloutCard
+                    title={analysis.callout.title}
+                    content={analysis.callout.content}
+                  />
+                )}
+
+                {analysis.forecasts && (
+                  <ForecastTabs forecasts={analysis.forecasts} />
+                )}
+
+                <ETFTypeBadge type={analysis.etf_type} />
+              </>
+            ) : isLegacyETF ? (
+              <>
+                <Section title="Market Analysis">
+                  <p className="text-muted-foreground leading-relaxed">
+                    {analysis.market_analysis}
+                  </p>
+                </Section>
+
+                <div className="grid grid-cols-2 gap-5 mb-5">
+                  <Section title="Risk Flags">
+                    <ul className="pl-5 space-y-1">
+                      {(analysis.risks || []).map((r, i) => (
+                        <li key={i} className="text-red-500 dark:text-red-400">
+                          {r}
+                        </li>
+                      ))}
+                    </ul>
+                  </Section>
+                  <Section title="Tailwinds">
+                    <ul className="pl-5 space-y-1">
+                      {(analysis.tailwinds || []).map((t, i) => (
+                        <li key={i} className="text-green-500 dark:text-green-400">
+                          {t}
+                        </li>
+                      ))}
+                    </ul>
+                  </Section>
+                </div>
+
+                <ScenarioCards scenarios={analysis.scenarios} />
+              </>
+            ) : (
+              <>
+                <Section title="Valuation Analysis">
+                  <p className="text-muted-foreground leading-relaxed">
+                    {analysis.valuation_analysis}
+                  </p>
+                </Section>
+
+                <div className="grid grid-cols-2 gap-5 mb-5">
+                  <Section title="Risk Flags">
+                    <ul className="pl-5 space-y-1">
+                      {(analysis.risks || []).map((r, i) => (
+                        <li key={i} className="text-red-500 dark:text-red-400">
+                          {r}
+                        </li>
+                      ))}
+                    </ul>
+                  </Section>
+                  <Section title="Catalysts">
+                    <ul className="pl-5 space-y-1">
+                      {(analysis.catalysts || []).map((c, i) => (
+                        <li key={i} className="text-green-500 dark:text-green-400">
+                          {c}
+                        </li>
+                      ))}
+                    </ul>
+                  </Section>
+                </div>
+
+                {analysis.forecasts && (
+                  <ForecastTabs forecasts={analysis.forecasts} />
+                )}
+                {computedTargets && (
+                  <TargetBreakdown computedTargets={computedTargets} />
+                )}
+              </>
             )}
           </div>
         )}
@@ -123,6 +324,16 @@ function Section({ title, children }) {
 
 function VerdictBadge({ verdict }) {
   const config = VERDICT_CONFIG[verdict] || VERDICT_CONFIG.FAIR_VALUE;
+  return (
+    <Badge className={`text-base px-4 py-1.5 ${config.className}`}>
+      {config.label}
+    </Badge>
+  );
+}
+
+function ActionBadge({ action }) {
+  const config = ACTION_CONFIG[action];
+  if (!config) return null;
   return (
     <Badge className={`text-base px-4 py-1.5 ${config.className}`}>
       {config.label}
@@ -211,5 +422,217 @@ function PriceRange({ target }) {
         />
       </div>
     </div>
+  );
+}
+
+const SCENARIO_LABELS = [
+  { key: "bull", label: "Bull Case", color: "text-green-600 dark:text-green-400", border: "border-green-200 dark:border-green-800" },
+  { key: "base", label: "Base Case", color: "text-yellow-600 dark:text-yellow-400", border: "border-yellow-200 dark:border-yellow-800" },
+  { key: "bear", label: "Bear Case", color: "text-red-600 dark:text-red-400", border: "border-red-200 dark:border-red-800" },
+];
+
+const ETF_TYPE_LABELS = {
+  BROAD_MARKET: "Broad Market",
+  DIVIDEND_GROWTH: "Dividend Growth",
+  GROWTH: "Growth",
+  INCOME: "Income",
+  SECTOR: "Sector",
+  INTERNATIONAL: "International",
+  THEMATIC: "Thematic",
+};
+
+function ETFTypeBadge({ type }) {
+  if (!type) return null;
+  return (
+    <p className="text-xs text-muted-foreground mt-4">
+      Analyzed as: <span className="font-semibold">{ETF_TYPE_LABELS[type] || type}</span> ETF
+    </p>
+  );
+}
+
+function CalloutCard({ title, content }) {
+  if (!title || !content) return null;
+  return (
+    <div className="mb-5 rounded-lg border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/20 p-4">
+      <h4 className="text-sm font-bold uppercase tracking-wide mb-1 text-violet-700 dark:text-violet-300">
+        {title}
+      </h4>
+      <p className="text-sm text-muted-foreground leading-relaxed">{content}</p>
+    </div>
+  );
+}
+
+const HORIZON_LABELS = { '3m': '3-Month', '6m': '6-Month', '12m': '12-Month' };
+
+function ComputedForecastTabs({ computedTargets }) {
+  const [active, setActive] = useState('3m');
+  const horizon = computedTargets.scenarios[active];
+  if (!horizon) return null;
+
+  return (
+    <Section title="Price Forecast (computed)">
+      <div className="flex gap-2 mb-4">
+        {FORECAST_PERIODS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setActive(key)}
+            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              active === key
+                ? "bg-violet-600 text-white"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <PriceRange target={{ low: horizon.bear.targetPrice, base: horizon.base.targetPrice, high: horizon.bull.targetPrice }} />
+    </Section>
+  );
+}
+
+function TargetBreakdown({ computedTargets }) {
+  const [active, setActive] = useState('12m');
+
+  // Detect bank data by checking for pbMultiple field
+  const sampleData = computedTargets.scenarios['12m']?.bear;
+  const isBank = sampleData?.pbMultiple != null;
+
+  if (isBank) {
+    return <BankTargetBreakdown computedTargets={computedTargets} />;
+  }
+
+  return (
+    <details className="mb-5">
+      <summary className="text-sm font-bold text-foreground uppercase tracking-wide cursor-pointer hover:text-violet-600 transition-colors">
+        Calculation Breakdown
+      </summary>
+      <div className="mt-3">
+        <div className="flex gap-2 mb-3">
+          {Object.keys(HORIZON_LABELS).map((key) => (
+            <button
+              key={key}
+              onClick={() => setActive(key)}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                active === key
+                  ? "bg-violet-600 text-white"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              {HORIZON_LABELS[key]}
+            </button>
+          ))}
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-2 pr-4 text-muted-foreground font-medium">Scenario</th>
+                <th className="text-right py-2 px-4 text-muted-foreground font-medium">Projected EPS</th>
+                <th className="text-right py-2 px-4 text-muted-foreground font-medium">Growth</th>
+                <th className="text-right py-2 px-4 text-muted-foreground font-medium">P/E Multiple</th>
+                <th className="text-right py-2 pl-4 text-muted-foreground font-medium">Target Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              {['bear', 'base', 'bull'].map((scenario) => {
+                const data = computedTargets.scenarios[active]?.[scenario];
+                if (!data) return null;
+                const colors = { bear: 'text-red-500', base: 'text-yellow-500', bull: 'text-green-500' };
+                return (
+                  <tr key={scenario} className="border-b border-border/50">
+                    <td className={`py-2 pr-4 font-medium capitalize ${colors[scenario]}`}>{scenario}</td>
+                    <td className="text-right py-2 px-4 text-foreground">${data.eps}</td>
+                    <td className="text-right py-2 px-4 text-foreground">{data.growthRate}%</td>
+                    <td className="text-right py-2 px-4 text-foreground">{data.peMultiple}x</td>
+                    <td className="text-right py-2 pl-4 text-foreground font-semibold">${data.targetPrice}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {computedTargets.inputs && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Base EPS: ${computedTargets.inputs.forwardEPS ?? computedTargets.inputs.currentEPS} ({computedTargets.inputs.forwardEPS ? 'forward' : 'trailing'}) | Historical Avg P/E: {computedTargets.inputs.historicalAvgPE}x | EPS CAGR: {computedTargets.inputs.epsGrowthRate}%
+          </p>
+        )}
+      </div>
+    </details>
+  );
+}
+
+function BankTargetBreakdown({ computedTargets }) {
+  const hasDDM = computedTargets.scenarios['12m']?.bear?.ddmFairPrice != null;
+  const colors = { bear: 'text-red-500', base: 'text-yellow-500', bull: 'text-green-500' };
+
+  return (
+    <details className="mb-5">
+      <summary className="text-sm font-bold text-foreground uppercase tracking-wide cursor-pointer hover:text-violet-600 transition-colors">
+        Calculation Breakdown
+      </summary>
+      <div className="mt-3">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-2 pr-4 text-muted-foreground font-medium">Scenario</th>
+                <th className="text-right py-2 px-4 text-muted-foreground font-medium">P/E Price</th>
+                <th className="text-right py-2 px-4 text-muted-foreground font-medium">P/B Price</th>
+                {hasDDM && <th className="text-right py-2 px-4 text-muted-foreground font-medium">DDM Price</th>}
+                <th className="text-right py-2 pl-4 text-muted-foreground font-medium">Blended Target</th>
+              </tr>
+            </thead>
+            <tbody>
+              {['bear', 'base', 'bull'].map((scenario) => {
+                const data = computedTargets.scenarios['12m']?.[scenario];
+                if (!data) return null;
+                return (
+                  <tr key={scenario} className="border-b border-border/50">
+                    <td className={`py-2 pr-4 font-medium capitalize ${colors[scenario]}`}>
+                      {scenario}
+                      <span className="text-xs text-muted-foreground ml-1">
+                        ({data.peMultiple}x P/E, {data.pbMultiple}x P/B)
+                      </span>
+                    </td>
+                    <td className="text-right py-2 px-4 text-foreground">${data.peFairPrice}</td>
+                    <td className="text-right py-2 px-4 text-foreground">${data.pbFairPrice}</td>
+                    {hasDDM && <td className="text-right py-2 px-4 text-foreground">${data.ddmFairPrice}</td>}
+                    <td className="text-right py-2 pl-4 text-foreground font-semibold">${data.targetPrice}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {computedTargets.inputs && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Forward EPS: ${computedTargets.inputs.forwardEPS ?? computedTargets.inputs.currentEPS} | Book Value: ${computedTargets.inputs.bookValuePerShare}{computedTargets.inputs.dividendRate ? ` | Dividend: $${computedTargets.inputs.dividendRate}/yr` : ''} | P/E range: {computedTargets.scenarios['12m'].bear.peMultiple}–{computedTargets.scenarios['12m'].bull.peMultiple}x | P/B range: {computedTargets.scenarios['12m'].bear.pbMultiple}–{computedTargets.scenarios['12m'].bull.pbMultiple}x
+          </p>
+        )}
+      </div>
+    </details>
+  );
+}
+
+function ScenarioCards({ scenarios }) {
+  if (!scenarios) return null;
+  return (
+    <Section title="12-Month Scenarios">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {SCENARIO_LABELS.map(({ key, label, color, border }) => (
+          scenarios[key] && (
+            <div key={key} className={`rounded-lg border ${border} p-4`}>
+              <h4 className={`text-sm font-bold uppercase tracking-wide mb-2 ${color}`}>
+                {label}
+              </h4>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {scenarios[key]}
+              </p>
+            </div>
+          )
+        ))}
+      </div>
+    </Section>
   );
 }

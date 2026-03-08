@@ -1,8 +1,15 @@
 import { Router } from 'express';
-import { getStockData, getNewsForSymbol, getREITFundamentals } from '../services/yahooFinance.js';
+import { getStockData, getNewsForSymbol, getREITFundamentals, getHistoricalEPS, getETFFundData } from '../services/yahooFinance.js';
 import { calculateFairValueSeries } from '../utils/valuation.js';
 import { streamAnalysis } from '../services/claude.js';
 import { calculateREITMetrics } from '../utils/reitMetrics.js';
+import { classifyETF } from '../utils/etfClassifier.js';
+import { buildETFAnalysisPrompt } from '../utils/etfPrompts.js';
+import { calculateDividendGrade } from '../utils/dividendGrade.js';
+import { computePriceTargets } from '../utils/priceTargets.js';
+import { isBank } from '../utils/bankClassifier.js';
+import { buildBankPrompt } from '../utils/bankPrompts.js';
+import { computeBankPriceTargets } from '../utils/bankPriceTargets.js';
 
 const router = Router();
 
@@ -28,6 +35,11 @@ function isREIT(data) {
 function getAssetType(data) {
   if (data.price?.quoteType === 'ETF') return 'etf';
   if (isREIT(data)) return 'reit';
+  if (isBank({
+    sector: data.summaryProfile?.sector,
+    industry: data.summaryProfile?.industry,
+    ticker: data.price?.symbol,
+  })) return 'bank';
   return 'stock';
 }
 
@@ -103,10 +115,13 @@ ${newsSection || 'No recent news available.'}
 
 ---
 
+Determine an action recommendation based on: STRONG_BUY = significantly undervalued with high conviction and strong dividend sustainability; BUY = moderately undervalued or good entry point; HOLD = fair value or mixed signals; SELL = overvalued with headwinds; STRONG_SELL = significantly overvalued with high downside risk or dividend at risk.
+
 Based on this data, provide your analysis as a JSON object with this exact structure:
 {
   "verdict": "UNDERVALUED" | "OVERVALUED" | "FAIR_VALUE",
   "confidence": "HIGH" | "MEDIUM" | "LOW",
+  "action": "STRONG_BUY" | "BUY" | "HOLD" | "SELL" | "STRONG_SELL",
   "summary": "2-3 sentence overall assessment of this REIT, focusing on dividend sustainability and value",
   "valuation_analysis": "${valuationInstruction}",
   "risks": ["risk1", "risk2", "risk3"],
@@ -130,71 +145,9 @@ Based on this data, provide your analysis as a JSON object with this exact struc
 Return ONLY the JSON object, no markdown code fences or other text.`;
 }
 
-function buildETFPrompt(stock, news) {
-  const p = stock.price || {};
-  const sd = stock.summaryDetail || {};
-  const sp = stock.summaryProfile || {};
+// buildETFPrompt replaced by etfClassifier + etfPrompts modules
 
-  const newsSection = (news || [])
-    .slice(0, 5)
-    .map((n, i) => `${i + 1}. ${n.title} (${n.publisher})`)
-    .join('\n');
-
-  return `You are a professional ETF analyst. Analyze the following ETF data and provide a structured assessment.
-
-## ETF Data
-- **Fund:** ${p.shortName || p.longName || 'Unknown'} (${p.symbol || 'N/A'})
-- **Category:** ${sp.category || sp.sector || 'N/A'}
-- **Current Price:** $${p.regularMarketPrice ?? 'N/A'} ${p.currency || 'USD'}
-- **52-Week High:** $${sd.fiftyTwoWeekHigh ?? 'N/A'}
-- **52-Week Low:** $${sd.fiftyTwoWeekLow ?? 'N/A'}
-- **50-Day Avg:** $${sd.fiftyDayAverage?.toFixed(2) ?? 'N/A'}
-- **200-Day Avg:** $${sd.twoHundredDayAverage?.toFixed(2) ?? 'N/A'}
-
-## Fund Metrics
-- **Expense Ratio:** ${sd.annualReportExpenseRatio != null ? (sd.annualReportExpenseRatio * 100).toFixed(2) + '%' : (sd.expenseRatio != null ? (sd.expenseRatio * 100).toFixed(2) + '%' : 'N/A')}
-- **Dividend Yield:** ${sd.dividendYield != null ? (sd.dividendYield * 100).toFixed(2) + '%' : sd.yield != null ? (sd.yield * 100).toFixed(2) + '%' : 'N/A'}
-- **Net Assets:** ${sd.totalAssets ? formatLargeNumber(sd.totalAssets) : 'N/A'}
-- **Beta (3Y):** ${sd.beta3Year?.toFixed(2) ?? 'N/A'}
-- **YTD Return:** ${sd.ytdReturn != null ? (sd.ytdReturn * 100).toFixed(2) + '%' : 'N/A'}
-
-## Technical Levels
-- **Price vs 50-Day SMA:** ${p.regularMarketPrice && sd.fiftyDayAverage ? (p.regularMarketPrice > sd.fiftyDayAverage ? 'Above' : 'Below') + ' (' + ((p.regularMarketPrice / sd.fiftyDayAverage - 1) * 100).toFixed(1) + '%)' : 'N/A'}
-- **Price vs 200-Day SMA:** ${p.regularMarketPrice && sd.twoHundredDayAverage ? (p.regularMarketPrice > sd.twoHundredDayAverage ? 'Above' : 'Below') + ' (' + ((p.regularMarketPrice / sd.twoHundredDayAverage - 1) * 100).toFixed(1) + '%)' : 'N/A'}
-
-## Recent News Headlines
-${newsSection || 'No recent news available.'}
-
----
-
-Based on this data, provide your analysis as a JSON object with this exact structure:
-{
-  "verdict": "UNDERVALUED" | "OVERVALUED" | "FAIR_VALUE",
-  "confidence": "HIGH" | "MEDIUM" | "LOW",
-  "summary": "2-3 sentence overall assessment of this ETF",
-  "valuation_analysis": "Paragraph analyzing the ETF's current technical positioning, expense efficiency, yield, and whether it's a good entry point based on moving average levels and 52-week range",
-  "risks": ["risk1", "risk2", "risk3"],
-  "catalysts": ["catalyst1", "catalyst2"],
-  "forecasts": {
-    "3m": {
-      "price_target": { "low": number, "base": number, "high": number },
-      "summary": "2-3 sentence 3-month outlook"
-    },
-    "6m": {
-      "price_target": { "low": number, "base": number, "high": number },
-      "summary": "2-3 sentence 6-month outlook"
-    },
-    "12m": {
-      "price_target": { "low": number, "base": number, "high": number },
-      "summary": "2-3 sentence 12-month outlook"
-    }
-  }
-}
-
-Return ONLY the JSON object, no markdown code fences or other text.`;
-}
-
-function buildPrompt(stock, chart, news) {
+function buildPrompt(stock, chart, news, priceTargets) {
   const p = stock.price || {};
   const fd = stock.financialData || {};
   const sd = stock.summaryDetail || {};
@@ -235,35 +188,54 @@ function buildPrompt(stock, chart, news) {
 - **Dividend Yield:** ${pct(sd.dividendYield)}
 
 ## Fair Value Assessment
-- **Fair Value (15x P/E):** $${chart.currentFairValue ? (chart.annualEPS[chart.annualEPS.length - 1]?.eps * chart.fairPE_orange)?.toFixed(2) : 'N/A'}
+- **Fair Value (${chart.fairPE_orange}x P/E — ${sp.sector || 'default'} baseline):** $${chart.currentFairValue ? (chart.annualEPS[chart.annualEPS.length - 1]?.eps * chart.fairPE_orange)?.toFixed(2) : 'N/A'}
 - **Fair Value (Historical Avg P/E):** $${chart.currentFairValue?.toFixed(2) ?? 'N/A'}
 - **Current Price vs Fair Value Ratio:** ${chart.verdictRatio ?? 'N/A'}x (>1 = overvalued)
 
 ## Recent News Headlines
 ${newsSection || 'No recent news available.'}
+${priceTargets ? `
+## Computed Price Targets (server-calculated — use these exact values)
+### 3-Month Targets
+- Bear: $${priceTargets.scenarios['3m'].bear.targetPrice} (EPS: $${priceTargets.scenarios['3m'].bear.eps}, Growth: ${priceTargets.scenarios['3m'].bear.growthRate}%, P/E: ${priceTargets.scenarios['3m'].bear.peMultiple}x)
+- Base: $${priceTargets.scenarios['3m'].base.targetPrice} (EPS: $${priceTargets.scenarios['3m'].base.eps}, Growth: ${priceTargets.scenarios['3m'].base.growthRate}%, P/E: ${priceTargets.scenarios['3m'].base.peMultiple}x)
+- Bull: $${priceTargets.scenarios['3m'].bull.targetPrice} (EPS: $${priceTargets.scenarios['3m'].bull.eps}, Growth: ${priceTargets.scenarios['3m'].bull.growthRate}%, P/E: ${priceTargets.scenarios['3m'].bull.peMultiple}x)
+### 6-Month Targets
+- Bear: $${priceTargets.scenarios['6m'].bear.targetPrice} (EPS: $${priceTargets.scenarios['6m'].bear.eps}, Growth: ${priceTargets.scenarios['6m'].bear.growthRate}%, P/E: ${priceTargets.scenarios['6m'].bear.peMultiple}x)
+- Base: $${priceTargets.scenarios['6m'].base.targetPrice} (EPS: $${priceTargets.scenarios['6m'].base.eps}, Growth: ${priceTargets.scenarios['6m'].base.growthRate}%, P/E: ${priceTargets.scenarios['6m'].base.peMultiple}x)
+- Bull: $${priceTargets.scenarios['6m'].bull.targetPrice} (EPS: $${priceTargets.scenarios['6m'].bull.eps}, Growth: ${priceTargets.scenarios['6m'].bull.growthRate}%, P/E: ${priceTargets.scenarios['6m'].bull.peMultiple}x)
+### 12-Month Targets
+- Bear: $${priceTargets.scenarios['12m'].bear.targetPrice} (EPS: $${priceTargets.scenarios['12m'].bear.eps}, Growth: ${priceTargets.scenarios['12m'].bear.growthRate}%, P/E: ${priceTargets.scenarios['12m'].bear.peMultiple}x)
+- Base: $${priceTargets.scenarios['12m'].base.targetPrice} (EPS: $${priceTargets.scenarios['12m'].base.eps}, Growth: ${priceTargets.scenarios['12m'].base.growthRate}%, P/E: ${priceTargets.scenarios['12m'].base.peMultiple}x)
+- Bull: $${priceTargets.scenarios['12m'].bull.targetPrice} (EPS: $${priceTargets.scenarios['12m'].bull.eps}, Growth: ${priceTargets.scenarios['12m'].bull.growthRate}%, P/E: ${priceTargets.scenarios['12m'].bull.peMultiple}x)
 
+PRICE TARGET RULE: You MUST use the server-calculated price targets above for low/base/high values. Bear = low, Base = base, Bull = high. Do not invent different numbers. Your job is to explain the assumptions and provide qualitative commentary.
+` : ''}
 ---
+
+Determine an action recommendation based on: STRONG_BUY = trading significantly below fair value with strong earnings growth; BUY = below fair value with positive catalysts; HOLD = near fair value, balanced outlook; SELL = above fair value with headwinds; STRONG_SELL = significantly overvalued with deteriorating fundamentals.
 
 Based on this data, provide your analysis as a JSON object with this exact structure:
 {
   "verdict": "UNDERVALUED" | "OVERVALUED" | "FAIR_VALUE",
   "confidence": "HIGH" | "MEDIUM" | "LOW",
+  "action": "STRONG_BUY" | "BUY" | "HOLD" | "SELL" | "STRONG_SELL",
   "summary": "2-3 sentence overall assessment",
   "valuation_analysis": "Paragraph comparing current price to historical P/E and fair value estimates",
   "risks": ["risk1", "risk2", "risk3"],
   "catalysts": ["catalyst1", "catalyst2"],
   "forecasts": {
     "3m": {
-      "price_target": { "low": number, "base": number, "high": number },
-      "summary": "2-3 sentence 3-month outlook"
+      "price_target": { "low": ${priceTargets ? 'bear target from above' : 'number'}, "base": ${priceTargets ? 'base target from above' : 'number'}, "high": ${priceTargets ? 'bull target from above' : 'number'} },
+      "summary": "2-3 sentence 3-month outlook explaining the scenario assumptions"
     },
     "6m": {
-      "price_target": { "low": number, "base": number, "high": number },
-      "summary": "2-3 sentence 6-month outlook"
+      "price_target": { "low": ${priceTargets ? 'bear target from above' : 'number'}, "base": ${priceTargets ? 'base target from above' : 'number'}, "high": ${priceTargets ? 'bull target from above' : 'number'} },
+      "summary": "2-3 sentence 6-month outlook explaining the scenario assumptions"
     },
     "12m": {
-      "price_target": { "low": number, "base": number, "high": number },
-      "summary": "2-3 sentence 12-month outlook"
+      "price_target": { "low": ${priceTargets ? 'bear target from above' : 'number'}, "base": ${priceTargets ? 'base target from above' : 'number'}, "high": ${priceTargets ? 'bull target from above' : 'number'} },
+      "summary": "2-3 sentence 12-month outlook explaining the scenario assumptions"
     }
   }
 }
@@ -293,12 +265,23 @@ router.post('/', async (req, res) => {
     const forwardEPS = data.defaultKeyStatistics?.forwardEps ?? null;
     const currentPrice = data.price?.regularMarketPrice ?? null;
 
+    let fundamentals = null;
+    try {
+      fundamentals = await getHistoricalEPS(upperSymbol);
+    } catch (err) {
+      console.warn(`Could not fetch fundamentals for ${upperSymbol}:`, err.message);
+    }
+
+    const sector = data.summaryProfile?.sector || '';
+
     const chart = calculateFairValueSeries({
       incomeStatements,
       historicalPrices: data.historicalPrices,
       sharesOutstanding,
       forwardEPS,
       currentPrice,
+      fundamentals,
+      sector,
     });
 
     const stock = {
@@ -308,6 +291,8 @@ router.post('/', async (req, res) => {
       defaultKeyStatistics: data.defaultKeyStatistics,
       earningsTrend: data.earningsTrend,
       summaryProfile: data.summaryProfile,
+      fundProfile: data.fundProfile,
+      topHoldings: data.topHoldings,
     };
 
     const assetType = getAssetType({ price: data.price, summaryProfile: data.summaryProfile });
@@ -322,13 +307,55 @@ router.post('/', async (req, res) => {
       }
     }
 
+    let priceTargets = null;
+    if (assetType === 'stock') {
+      priceTargets = computePriceTargets({
+        currentEPS: data.defaultKeyStatistics?.trailingEps ?? null,
+        forwardEPS: data.defaultKeyStatistics?.forwardEps ?? null,
+        epsGrowthRate: chart.epsGrowthRate,
+        historicalAvgPE: chart.historicalAvgPE,
+        currentPrice,
+      });
+    } else if (assetType === 'bank') {
+      priceTargets = computeBankPriceTargets({
+        currentEPS: data.defaultKeyStatistics?.trailingEps ?? null,
+        forwardEPS: data.defaultKeyStatistics?.forwardEps ?? null,
+        bookValuePerShare: data.defaultKeyStatistics?.bookValue ?? null,
+        currentPrice,
+        historicalAvgPE: chart.historicalAvgPE,
+        dividendRate: data.summaryDetail?.dividendRate ?? null,
+      });
+    }
+
     let prompt;
+    let etfType = null;
     if (assetType === 'etf') {
-      prompt = buildETFPrompt(stock, news);
+      try {
+        const fundData = await getETFFundData(upperSymbol);
+        stock.fundProfile = fundData.fundProfile;
+        stock.topHoldings = fundData.topHoldings;
+      } catch (err) {
+        console.warn(`Could not fetch fund data for ${upperSymbol}:`, err.message);
+      }
+
+      const dividendInfo = data.dividendEvents?.length
+        ? calculateDividendGrade(data.dividendEvents)
+        : null;
+      const sd = data.summaryDetail || {};
+      etfType = classifyETF({
+        ticker: upperSymbol,
+        name: data.price?.shortName || data.price?.longName || '',
+        dividendYield: sd.dividendYield ?? sd.yield ?? null,
+        peRatio: sd.trailingPE ?? null,
+        streak: dividendInfo?.consecutiveIncreaseStreak ?? 0,
+      });
+      prompt = buildETFAnalysisPrompt(etfType, stock, news, dividendInfo);
     } else if (assetType === 'reit') {
       prompt = buildREITPrompt(stock, news, reitMetrics);
+    } else if (assetType === 'bank') {
+      prompt = buildBankPrompt(stock, chart, news, priceTargets);
     } else {
-      prompt = buildPrompt(stock, chart, news);
+      prompt = buildPrompt(stock, chart, news, priceTargets);
     }
 
     // Set SSE headers
@@ -337,11 +364,26 @@ router.post('/', async (req, res) => {
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
 
+    if (priceTargets) {
+      res.write(`data: ${JSON.stringify({ priceTargets })}\n\n`);
+    }
+
     req.on('close', () => {
       // Client disconnected — stream will end naturally
     });
 
-    await streamAnalysis(prompt, res);
+    const SYSTEM_PROMPTS = {
+      BROAD_MARKET: `You are a financial analyst producing structured JSON.
+NON-NEGOTIABLE RULES — violations will make the analysis useless:
+1. CONFIDENCE GATE: If ANY news headline mentions uncertainty, selloffs, tariffs, rate fears, or geopolitical risk → confidence MUST be MEDIUM or LOW. HIGH is only allowed when P/E is at or below the historical reference range AND no headline suggests macro disruption.
+2. CATALYST GATE: Every catalyst must name a specific event with an approximate date. If a catalyst could appear in any analysis for any stock (e.g. "Fed pivot", "earnings growth"), it is BANNED. Replace with "No near-term catalysts identified" if none are specific.
+3. EXPENSE RATIO: If the data includes an expense ratio, you MUST mention it and compare to SPY (0.09%) and IVV (0.03%).
+4. FORECAST GATE: Every price target must state its macro assumption (e.g. "assumes 2 rate cuts and no recession"). Targets without assumptions are not allowed.
+Follow every other instruction in the user prompt exactly.`,
+    };
+    const DEFAULT_SYSTEM = 'You are a financial analyst producing structured JSON analysis. Follow every instruction in the user prompt exactly. Do not add fields or skip constraints. Be data-driven and conservative in confidence ratings.';
+    const system = (assetType === 'etf' && SYSTEM_PROMPTS[etfType]) || DEFAULT_SYSTEM;
+    await streamAnalysis(prompt, res, { temperature: 0.2, system });
   } catch (err) {
     console.error(`Error analyzing ${symbol}:`, err.message);
     if (!res.headersSent) {

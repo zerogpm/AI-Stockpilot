@@ -1,10 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-export async function streamAnalysis(prompt, res) {
+export async function streamAnalysis(prompt, res, { temperature = 0.2, system = '' } = {}) {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const stream = client.messages.stream({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 3000,
+    temperature,
+    ...(system ? { system } : {}),
     messages: [{ role: 'user', content: prompt }],
   });
 

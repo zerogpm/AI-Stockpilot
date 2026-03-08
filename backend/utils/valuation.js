@@ -1,19 +1,48 @@
+export const SECTOR_PE_BASELINES = {
+  'Technology': 25,
+  'Communication Services': 20,
+  'Consumer Cyclical': 20,
+  'Consumer Defensive': 20,
+  'Healthcare': 18,
+  'Industrials': 18,
+  'Basic Materials': 15,
+  'Energy': 12,
+  'Financial Services': 13,
+  'Utilities': 17,
+  'Real Estate': 35,
+};
+
+export const DEFAULT_SECTOR_PE = 15;
+
 export function calculateFairValueSeries({
   incomeStatements,
   historicalPrices,
   sharesOutstanding,
   forwardEPS,
   currentPrice,
+  fundamentals,
+  sector,
 }) {
-  // Step 1: Extract annual EPS from income statements
-  const annualEPS = (incomeStatements || [])
+  // Step 1: Extract annual EPS — prefer fundamentalsTimeSeries (10yr) over incomeStatementHistory (~4yr)
+  const epsFromFundamentals = (fundamentals || [])
+    .map((f) => {
+      const year = new Date(f.date).getFullYear();
+      const eps = f.dilutedEPS ?? f.basicEPS ??
+        (f.netIncome && f.dilutedAverageShares ? f.netIncome / f.dilutedAverageShares : null);
+      return { year, eps };
+    })
+    .filter((e) => e.eps != null && e.eps > 0);
+
+  const epsFromStatements = (incomeStatements || [])
     .map((stmt) => {
       const year = new Date(stmt.endDate).getFullYear();
       const eps =
         stmt.dilutedEPS ?? (stmt.netIncome && sharesOutstanding ? stmt.netIncome / sharesOutstanding : null);
-      return { year, eps, endDate: stmt.endDate };
+      return { year, eps };
     })
-    .filter((e) => e.eps != null && e.eps > 0)
+    .filter((e) => e.eps != null && e.eps > 0);
+
+  const annualEPS = (epsFromFundamentals.length >= epsFromStatements.length ? epsFromFundamentals : epsFromStatements)
     .sort((a, b) => a.year - b.year);
 
   // Step 2: Compute average stock price per fiscal year
@@ -58,10 +87,29 @@ export function calculateFairValueSeries({
     }
   }
 
-  // FastGraphs: P/E = 15 for <15% growth, P/E = growth rate for >=15%
-  const fairPE_orange = epsGrowthRate >= 15 ? Math.max(15, epsGrowthRate) : 15;
+  // FastGraphs: use sector baseline P/E, or growth rate if it exceeds the baseline
+  const sectorBasePE = SECTOR_PE_BASELINES[sector] ?? DEFAULT_SECTOR_PE;
+  const fairPE_orange = epsGrowthRate >= sectorBasePE
+    ? Math.max(sectorBasePE, epsGrowthRate)
+    : sectorBasePE;
 
-  // Step 5: Build monthly chart data
+  // Step 5: Extrapolate EPS backward for years with price data but no EPS
+  const epsByYear = {};
+  for (const e of annualEPS) epsByYear[e.year] = e.eps;
+
+  if (annualEPS.length >= 2) {
+    const priceYears = Object.keys(pricesByYear).map(Number).sort((a, b) => a - b);
+    const oldestEPSYear = annualEPS[0].year;
+    const growthFactor = 1 + epsGrowthRate / 100;
+
+    for (let y = oldestEPSYear - 1; y >= priceYears[0]; y--) {
+      if (epsByYear[y + 1] && growthFactor > 0) {
+        epsByYear[y] = epsByYear[y + 1] / growthFactor;
+      }
+    }
+  }
+
+  // Step 6: Build monthly chart data
   const chartData = historicalPrices
     .filter((p) => p.close != null)
     .map((p) => {
@@ -69,11 +117,8 @@ export function calculateFairValueSeries({
       const year = date.getFullYear();
       const month = date.getMonth();
 
-      // Find EPS for this period
-      const epsEntry =
-        annualEPS.find((e) => e.year === year) ||
-        annualEPS.find((e) => e.year === year - 1);
-      const eps = epsEntry?.eps ?? null;
+      // Find EPS for this period (known or extrapolated)
+      const eps = epsByYear[year] ?? epsByYear[year - 1] ?? null;
 
       return {
         date: `${year}-${String(month + 1).padStart(2, '0')}`,
@@ -103,6 +148,7 @@ export function calculateFairValueSeries({
     historicalAvgPE: round2(historicalAvgPE),
     epsGrowthRate: round2(epsGrowthRate),
     fairPE_orange: round2(fairPE_orange),
+    sectorBasePE,
     currentFairValue: round2(currentFairValue),
     forwardFairValue: forwardFairValue ? round2(forwardFairValue) : null,
     verdictRatio: verdictRatio ? round2(verdictRatio) : null,

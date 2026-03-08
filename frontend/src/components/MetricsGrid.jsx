@@ -34,6 +34,48 @@ function getStockMetrics(sd, ks, fd) {
   ];
 }
 
+function getETFMetrics(sd, ks, fp) {
+  const fpExpense = fp?.feesExpensesInvestment?.annualReportExpenseRatio;
+  return [
+    { label: 'Dividend Yield', value: fmt(sd.yield ?? sd.dividendYield, 'pct'), highlight: true },
+    { label: 'Expense Ratio', value: fmt(fpExpense ?? sd.annualReportExpenseRatio ?? sd.expenseRatio, 'pct') },
+    { label: 'Net Assets', value: sd.totalAssets != null ? fmt(sd.totalAssets, 'dollar') : 'N/A' },
+    { label: 'Beta (3Y)', value: fmt(ks.beta3Year ?? sd.beta3Year, 'ratio') },
+    { label: 'YTD Return', value: fmt(ks.ytdReturn ?? sd.ytdReturn, 'pct') },
+    {
+      label: '52W Range',
+      value:
+        sd.fiftyTwoWeekLow != null && sd.fiftyTwoWeekHigh != null
+          ? `$${sd.fiftyTwoWeekLow.toFixed(2)} - $${sd.fiftyTwoWeekHigh.toFixed(2)}`
+          : 'N/A',
+    },
+    { label: '50-Day Avg', value: sd.fiftyDayAverage != null ? `$${sd.fiftyDayAverage.toFixed(2)}` : 'N/A' },
+    { label: '200-Day Avg', value: sd.twoHundredDayAverage != null ? `$${sd.twoHundredDayAverage.toFixed(2)}` : 'N/A' },
+  ];
+}
+
+function getBankMetrics(sd, ks, fd) {
+  return [
+    { label: 'P/E (TTM)', value: fmt(sd.trailingPE, 'ratio') },
+    { label: 'P/E (Forward)', value: fmt(ks.forwardPE, 'ratio') },
+    { label: 'EPS (TTM)', value: ks.trailingEps != null ? `$${ks.trailingEps.toFixed(2)}` : 'N/A' },
+    { label: 'Book Value/Share', value: ks.bookValue != null ? `$${ks.bookValue.toFixed(2)}` : 'N/A' },
+    { label: 'P/B Ratio', value: fmt(ks.priceToBook, 'ratio'), warn: ks.priceToBook > 1.8 },
+    { label: 'Dividend Yield', value: fmt(sd.dividendYield, 'pct'), highlight: true },
+    { label: 'Payout Ratio', value: sd.payoutRatio != null ? `${(sd.payoutRatio * 100).toFixed(0)}%` : 'N/A', warn: sd.payoutRatio > 0.8 },
+    { label: 'ROE', value: fmt(fd.returnOnEquity, 'pct'), highlight: fd.returnOnEquity > 0.10 },
+    {
+      label: '52W Range',
+      value:
+        sd.fiftyTwoWeekLow != null && sd.fiftyTwoWeekHigh != null
+          ? `$${sd.fiftyTwoWeekLow.toFixed(2)} - $${sd.fiftyTwoWeekHigh.toFixed(2)}`
+          : 'N/A',
+    },
+    { label: 'Debt/Equity', value: fmt(fd.debtToEquity, 'ratio') },
+    { label: 'Revenue Growth', value: fmt(fd.revenueGrowth, 'pct') },
+  ];
+}
+
 function getREITMetrics(sd, ks, fd, p) {
   return [
     { label: 'Dividend Yield', value: fmt(sd.dividendYield, 'pct'), highlight: true },
@@ -62,9 +104,15 @@ export default function MetricsGrid({ data }) {
   const p = data?.price || {};
   const assetType = data?.assetType || 'stock';
 
-  const metrics = assetType === 'reit'
-    ? getREITMetrics(sd, ks, fd, p)
-    : getStockMetrics(sd, ks, fd);
+  const fp = data?.fundProfile || {};
+
+  const metrics = assetType === 'etf'
+    ? getETFMetrics(sd, ks, fp)
+    : assetType === 'reit'
+      ? getREITMetrics(sd, ks, fd, p)
+      : assetType === 'bank'
+        ? getBankMetrics(sd, ks, fd)
+        : getStockMetrics(sd, ks, fd);
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">

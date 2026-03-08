@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateFairValueSeries } from './valuation.js';
+import { calculateFairValueSeries, SECTOR_PE_BASELINES, DEFAULT_SECTOR_PE } from './valuation.js';
 
 function makeStatement(year, dilutedEPS, netIncome) {
   return { endDate: `${year}-12-31`, dilutedEPS, netIncome };
@@ -201,6 +201,41 @@ describe('calculateFairValueSeries', () => {
     expect(result.forwardFairValue).toBeNull();
   });
 
+  it('prefers fundamentals data over incomeStatements when it has more years', () => {
+    const fundamentals = Array.from({ length: 8 }, (_, i) => ({
+      date: new Date(2016 + i, 11, 31),
+      dilutedEPS: 2 + i * 0.2,
+    }));
+    const result = calculateFairValueSeries({
+      incomeStatements: [makeStatement(2022, 3.2), makeStatement(2023, 3.4)],
+      historicalPrices: makePrices(2016, 2023, 30),
+      sharesOutstanding: 1000000,
+      forwardEPS: null,
+      currentPrice: 50,
+      fundamentals,
+    });
+
+    expect(result.annualEPS).toHaveLength(8);
+    expect(result.annualEPS[0].year).toBe(2016);
+    // All chart data points should have non-null fair values
+    const nullFairValues = result.chartData.filter((d) => d.fairValueBlue === null);
+    expect(nullFairValues).toHaveLength(0);
+  });
+
+  it('falls back to incomeStatements when fundamentals is empty', () => {
+    const result = calculateFairValueSeries({
+      incomeStatements: [makeStatement(2022, 3.0), makeStatement(2023, 3.5)],
+      historicalPrices: makePrices(2022, 2023, 40),
+      sharesOutstanding: 1000000,
+      forwardEPS: null,
+      currentPrice: 50,
+      fundamentals: [],
+    });
+
+    expect(result.annualEPS).toHaveLength(2);
+    expect(result.annualEPS[0].year).toBe(2022);
+  });
+
   it('filters out prices with null close values', () => {
     const result = calculateFairValueSeries({
       incomeStatements: [makeStatement(2023, 3.0)],
@@ -215,5 +250,90 @@ describe('calculateFairValueSeries', () => {
     });
 
     expect(result.chartData).toHaveLength(2);
+  });
+
+  it('uses Financial Services baseline (13x) for bank stocks', () => {
+    const result = calculateFairValueSeries({
+      incomeStatements: [
+        makeStatement(2022, 2.0),
+        makeStatement(2023, 2.1),
+      ],
+      historicalPrices: makePrices(2022, 2023, 30),
+      sharesOutstanding: 1000000,
+      forwardEPS: null,
+      currentPrice: 30,
+      sector: 'Financial Services',
+    });
+
+    expect(result.fairPE_orange).toBe(13);
+    expect(result.sectorBasePE).toBe(13);
+  });
+
+  it('uses Technology baseline (25x) when CAGR < baseline', () => {
+    const result = calculateFairValueSeries({
+      incomeStatements: [
+        makeStatement(2022, 2.0),
+        makeStatement(2023, 2.4),
+      ],
+      historicalPrices: makePrices(2022, 2023, 50),
+      sharesOutstanding: 1000000,
+      forwardEPS: null,
+      currentPrice: 60,
+      sector: 'Technology',
+    });
+
+    expect(result.fairPE_orange).toBe(25);
+    expect(result.sectorBasePE).toBe(25);
+  });
+
+  it('uses growth rate when CAGR exceeds sector baseline', () => {
+    const result = calculateFairValueSeries({
+      incomeStatements: [
+        makeStatement(2022, 2.0),
+        makeStatement(2023, 2.7),
+      ],
+      historicalPrices: makePrices(2022, 2023, 50),
+      sharesOutstanding: 1000000,
+      forwardEPS: null,
+      currentPrice: 70,
+      sector: 'Technology',
+    });
+
+    expect(result.fairPE_orange).toBe(35);
+    expect(result.sectorBasePE).toBe(25);
+  });
+
+  it('uses Energy baseline (12x) for energy stocks', () => {
+    const result = calculateFairValueSeries({
+      incomeStatements: [
+        makeStatement(2022, 5.0),
+        makeStatement(2023, 5.25),
+      ],
+      historicalPrices: makePrices(2022, 2023, 60),
+      sharesOutstanding: 1000000,
+      forwardEPS: null,
+      currentPrice: 65,
+      sector: 'Energy',
+    });
+
+    expect(result.fairPE_orange).toBe(12);
+    expect(result.sectorBasePE).toBe(12);
+  });
+
+  it('falls back to 15x for unknown sector', () => {
+    const result = calculateFairValueSeries({
+      incomeStatements: [
+        makeStatement(2022, 2.0),
+        makeStatement(2023, 2.1),
+      ],
+      historicalPrices: makePrices(2022, 2023, 30),
+      sharesOutstanding: 1000000,
+      forwardEPS: null,
+      currentPrice: 30,
+      sector: 'Some Unknown Sector',
+    });
+
+    expect(result.fairPE_orange).toBe(15);
+    expect(result.sectorBasePE).toBe(DEFAULT_SECTOR_PE);
   });
 });

@@ -15,8 +15,8 @@ function getCached(symbol) {
   } catch { return null; }
 }
 
-function setCached(symbol, analysis) {
-  localStorage.setItem(CACHE_KEY_PREFIX + symbol, JSON.stringify({ analysis, timestamp: Date.now() }));
+function setCached(symbol, data) {
+  localStorage.setItem(CACHE_KEY_PREFIX + symbol, JSON.stringify({ ...data, timestamp: Date.now() }));
 }
 
 export { getCached, setCached };
@@ -27,6 +27,7 @@ export function useClaudeStream() {
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState(null);
   const [cached, setCachedState] = useState(false);
+  const [computedTargets, setComputedTargets] = useState(null);
   const cancelRef = useRef(null);
   const rawTextRef = useRef('');
 
@@ -34,12 +35,14 @@ export function useClaudeStream() {
     const entry = getCached(symbol);
     if (entry) {
       setAnalysis(entry.analysis);
+      setComputedTargets(entry.computedTargets ?? null);
       setError(null);
       setRawText('');
       setCachedState(true);
       return true;
     }
     setAnalysis(null);
+    setComputedTargets(null);
     setCachedState(false);
     return false;
   }, []);
@@ -52,8 +55,10 @@ export function useClaudeStream() {
     setStreaming(true);
     setError(null);
     setCachedState(false);
+    setComputedTargets(null);
     rawTextRef.current = '';
 
+    let targets = null;
     cancelRef.current = streamAnalysis(
       symbol,
       (chunk) => {
@@ -70,7 +75,7 @@ export function useClaudeStream() {
           }
           const parsed = JSON.parse(text);
           setAnalysis(parsed);
-          setCached(symbol, parsed);
+          setCached(symbol, { analysis: parsed, computedTargets: targets });
         } catch {
           setError('Failed to parse Claude response as JSON');
         }
@@ -78,6 +83,10 @@ export function useClaudeStream() {
       (err) => {
         setStreaming(false);
         setError(err.message);
+      },
+      (pt) => {
+        targets = pt;
+        setComputedTargets(pt);
       }
     );
   }, []);
@@ -86,5 +95,5 @@ export function useClaudeStream() {
     return () => cancelRef.current?.();
   }, []);
 
-  return { rawText, analysis, streaming, error, cached, startAnalysis, loadCachedAnalysis };
+  return { rawText, analysis, streaming, error, cached, computedTargets, startAnalysis, loadCachedAnalysis };
 }

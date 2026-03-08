@@ -16,7 +16,7 @@ export async function fetchNews(symbol) {
   return res.json();
 }
 
-export function streamAnalysis(symbol, onChunk, onDone, onError) {
+export function streamAnalysis(symbol, onChunk, onDone, onError, onPriceTargets) {
   const controller = new AbortController();
 
   (async () => {
@@ -47,7 +47,9 @@ export function streamAnalysis(symbol, onChunk, onDone, onError) {
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const data = JSON.parse(line.slice(6));
-            if (data.done) {
+            if (data.priceTargets) {
+              onPriceTargets?.(data.priceTargets);
+            } else if (data.done) {
               onDone();
             } else if (data.error) {
               onError(new Error(data.error));

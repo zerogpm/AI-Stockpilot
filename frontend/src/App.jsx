@@ -11,6 +11,7 @@ import ValuationChart from './components/ValuationChart';
 import MetricsGrid from './components/MetricsGrid';
 import NewsSection from './components/NewsSection';
 import ClaudeAnalysis from './components/ClaudeAnalysis';
+import DividendHistory from './components/DividendHistory';
 
 function readRecent() {
   try { return JSON.parse(localStorage.getItem('recentStocks')) || []; }
@@ -91,8 +92,9 @@ function App() {
           <StockHeader data={data.stock} chartData={data.chart} selectedRange={selectedRange} />
           <ValuationChart chartData={data.chart} theme={theme} selectedRange={selectedRange} onRangeChange={setSelectedRange} />
           <MetricsGrid data={data.stock} />
+          <DividendHistory dividendInfo={data.dividendInfo} />
           <NewsSection news={data.news} />
-          <ClaudeAnalysis symbol={symbol} />
+          <ClaudeAnalysis symbol={symbol} assetType={data.stock?.assetType} />
         </div>
       )}
     </div>

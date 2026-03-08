@@ -5,7 +5,9 @@
       "Bash(node:*)",
       "Bash(npm ls:*)",
       "Bash(curl:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm test:*)",
+      "Bash(npx vitest:*)"
     ]
   }
 }

@@ -33,10 +33,29 @@ export async function getStockData(symbol, { interval = '1mo' } = {}) {
     volume: q.volume,
   }));
 
+  const dividendEvents = Object.values(chartResult.events?.dividends || {}).map((d) => ({
+    date: d.date,
+    amount: d.amount,
+  }));
+
   return {
     ...quoteSummary,
     historicalPrices,
+    dividendEvents,
   };
+}
+
+export async function getHistoricalEPS(symbol) {
+  const tenYearsAgo = new Date();
+  tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
+
+  const result = await yahooFinance.fundamentalsTimeSeries(symbol, {
+    period1: tenYearsAgo,
+    type: 'annual',
+    module: 'all',
+  });
+
+  return result;
 }
 
 export async function getREITFundamentals(symbol) {
@@ -50,6 +69,16 @@ export async function getREITFundamentals(symbol) {
   });
 
   return result;
+}
+
+export async function getETFFundData(symbol) {
+  const result = await yahooFinance.quoteSummary(symbol, {
+    modules: ['fundProfile', 'topHoldings'],
+  });
+  return {
+    fundProfile: result.fundProfile || null,
+    topHoldings: result.topHoldings || null,
+  };
 }
 
 export async function searchSymbols(query) {

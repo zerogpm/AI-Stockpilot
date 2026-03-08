@@ -13,12 +13,15 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { filterByRange } from '@/utils/dateRangeFilter';
 
-const VALUATION_SERIES = [
-  { key: 'actualPrice', label: 'Actual Price', colorKey: 'actualPrice' },
-  { key: 'eps', label: 'Annual EPS', color: '#82ca9d' },
-  { key: 'fairValueOrange', label: 'Fair Value (15x P/E)', color: '#FF8C00' },
-  { key: 'fairValueBlue', label: 'Fair Value (Hist. Avg P/E)', color: '#4169E1' },
-];
+function getValuationSeries(fairPE) {
+  const peLabel = fairPE ? `${fairPE}x` : '15x';
+  return [
+    { key: 'actualPrice', label: 'Actual Price', colorKey: 'actualPrice' },
+    { key: 'eps', label: 'Annual EPS', color: '#82ca9d' },
+    { key: 'fairValueOrange', label: `Fair Value (${peLabel} P/E)`, color: '#FF8C00' },
+    { key: 'fairValueBlue', label: 'Fair Value (Hist. Avg P/E)', color: '#4169E1' },
+  ];
+}
 
 const SMA_SERIES = [
   { key: 'actualPrice', label: 'Actual Price', colorKey: 'actualPrice' },
@@ -88,7 +91,7 @@ function DateRangeSelector({ selected, onChange, isDark, isSMA }) {
 
 export default function ValuationChart({ chartData, theme, selectedRange, onRangeChange }) {
   const isSMA = chartData?.chartType === 'sma';
-  const seriesConfig = isSMA ? SMA_SERIES : VALUATION_SERIES;
+  const seriesConfig = isSMA ? SMA_SERIES : getValuationSeries(chartData?.fairPE_orange);
 
   const mergedData = useMemo(() => {
     if (!chartData?.chartData) return [];
@@ -277,7 +280,7 @@ export default function ValuationChart({ chartData, theme, selectedRange, onRang
                   dot={false}
                   strokeWidth={2}
                   strokeDasharray="5 5"
-                  name="Fair Value (15x P/E)"
+                  name={`Fair Value (${chartData?.fairPE_orange ?? 15}x P/E)`}
                   hide={!visibleSeries.fairValueOrange}
                 />
                 <Line
