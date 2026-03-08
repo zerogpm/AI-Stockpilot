@@ -307,6 +307,22 @@ router.post('/', async (req, res) => {
       }
     }
 
+    let fairValueData = null;
+    if (assetType !== 'etf' && chart.currentFairValue) {
+      const latestEPS = chart.annualEPS?.length > 0
+        ? chart.annualEPS[chart.annualEPS.length - 1].eps : null;
+      fairValueData = {
+        currentPrice,
+        currentFairValue: chart.currentFairValue,
+        forwardFairValue: chart.forwardFairValue ?? null,
+        verdictRatio: chart.verdictRatio,
+        historicalAvgPE: chart.historicalAvgPE,
+        fairPE_orange: chart.fairPE_orange,
+        orangeFairValue: latestEPS ? Math.round(latestEPS * chart.fairPE_orange * 100) / 100 : null,
+        sector: sector,
+      };
+    }
+
     let priceTargets = null;
     if (assetType === 'stock') {
       priceTargets = computePriceTargets({
@@ -366,6 +382,10 @@ router.post('/', async (req, res) => {
 
     if (priceTargets) {
       res.write(`data: ${JSON.stringify({ priceTargets })}\n\n`);
+    }
+
+    if (fairValueData) {
+      res.write(`data: ${JSON.stringify({ fairValue: fairValueData })}\n\n`);
     }
 
     req.on('close', () => {

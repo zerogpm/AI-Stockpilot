@@ -47,6 +47,14 @@ export default function StockHeader({ data, chartData, selectedRange }) {
             {p.shortName || p.longName || 'Unknown'}{' '}
             <span className="font-normal text-muted-foreground">({p.symbol})</span>
           </h1>
+          <div className="text-xs font-medium mt-0.5">
+            {p.currency === 'CAD' ? (
+              <span className="text-red-400">Canadian Stock</span>
+            ) : (
+              <span className="text-blue-400">US Stock</span>
+            )}
+            {p.exchangeName && <span className="text-muted-foreground"> &middot; {p.exchangeName}</span>}
+          </div>
           <div className="text-sm text-muted-foreground mt-1">
             {sp.sector && <span>{sp.sector}</span>}
             {sp.industry && <span> &middot; {sp.industry}</span>}

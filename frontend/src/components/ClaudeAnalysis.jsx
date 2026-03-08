@@ -127,7 +127,7 @@ const VERDICT_CONFIG = {
 };
 
 export default function ClaudeAnalysis({ symbol, assetType }) {
-  const { analysis, streaming, error, cached, computedTargets, startAnalysis, loadCachedAnalysis } = useClaudeStream();
+  const { analysis, streaming, error, cached, computedTargets, fairValue, startAnalysis, loadCachedAnalysis } = useClaudeStream();
 
   useEffect(() => {
     if (symbol) loadCachedAnalysis(symbol);
@@ -161,16 +161,11 @@ export default function ClaudeAnalysis({ symbol, assetType }) {
         )}
 
         {streaming && (
-          <div>
-            <div className="flex flex-col items-center justify-center py-8 gap-3">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-200 border-t-violet-600" />
-              <p className="text-sm text-muted-foreground font-medium">
-                Analyzing {symbol}...
-              </p>
-            </div>
-            {computedTargets && (
-              <ComputedForecastTabs computedTargets={computedTargets} />
-            )}
+          <div className="flex flex-col items-center justify-center py-8 gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-200 border-t-violet-600" />
+            <p className="text-sm text-muted-foreground font-medium">
+              Analyzing {symbol}...
+            </p>
           </div>
         )}
 
@@ -181,6 +176,8 @@ export default function ClaudeAnalysis({ symbol, assetType }) {
               {analysis.action && <ActionBadge action={analysis.action} />}
               <ConfidenceBadge confidence={analysis.confidence} />
             </div>
+
+            {fairValue && <FairValueBanner fairValue={fairValue} />}
 
             <p className="text-base text-muted-foreground leading-relaxed mb-5">
               {analysis.summary}
@@ -354,6 +351,74 @@ function ConfidenceBadge({ confidence }) {
       />
       {confidence} Confidence
     </span>
+  );
+}
+
+function FairValueBanner({ fairValue }) {
+  if (!fairValue) return null;
+
+  const { currentPrice, currentFairValue, forwardFairValue, verdictRatio,
+          historicalAvgPE, fairPE_orange, orangeFairValue, sector } = fairValue;
+
+  const discountPct = (1 - verdictRatio) * 100;
+  const isUndervalued = verdictRatio < 1;
+  const isFairish = verdictRatio >= 0.95 && verdictRatio <= 1.05;
+
+  const borderColor = isUndervalued
+    ? 'border-green-300 dark:border-green-700'
+    : isFairish
+      ? 'border-yellow-300 dark:border-yellow-700'
+      : 'border-red-300 dark:border-red-700';
+  const bgColor = isUndervalued
+    ? 'bg-green-50 dark:bg-green-900/20'
+    : isFairish
+      ? 'bg-yellow-50 dark:bg-yellow-900/20'
+      : 'bg-red-50 dark:bg-red-900/20';
+  const accentColor = isUndervalued
+    ? 'text-green-600 dark:text-green-400'
+    : isFairish
+      ? 'text-yellow-600 dark:text-yellow-400'
+      : 'text-red-600 dark:text-red-400';
+
+  return (
+    <div className={`rounded-lg border ${borderColor} ${bgColor} p-4 mb-5`}>
+      <h4 className="text-sm font-bold uppercase tracking-wide mb-3 text-foreground">
+        Computed Fair Value
+      </h4>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div>
+          <div className="text-xs text-muted-foreground font-medium">Current Price</div>
+          <div className="text-lg font-bold text-foreground">${currentPrice?.toFixed(2)}</div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground font-medium">
+            Fair Value ({historicalAvgPE}x Avg P/E)
+          </div>
+          <div className="text-lg font-bold text-foreground">${currentFairValue?.toFixed(2)}</div>
+        </div>
+        {orangeFairValue && (
+          <div>
+            <div className="text-xs text-muted-foreground font-medium">
+              Fair Value ({fairPE_orange}x {sector || 'Sector'} P/E)
+            </div>
+            <div className="text-lg font-bold text-foreground">${orangeFairValue?.toFixed(2)}</div>
+          </div>
+        )}
+        <div>
+          <div className="text-xs text-muted-foreground font-medium">
+            {isUndervalued ? 'Discount to Avg P/E' : isFairish ? 'Near Avg P/E' : 'Premium to Avg P/E'}
+          </div>
+          <div className={`text-lg font-bold ${accentColor}`}>
+            {Math.abs(discountPct).toFixed(1)}%
+          </div>
+        </div>
+      </div>
+      {forwardFairValue && (
+        <div className="mt-2 text-xs text-muted-foreground">
+          Forward Fair Value (using forward EPS): ${forwardFairValue.toFixed(2)}
+        </div>
+      )}
+    </div>
   );
 }
 

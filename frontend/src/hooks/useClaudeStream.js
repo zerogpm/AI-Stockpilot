@@ -28,6 +28,7 @@ export function useClaudeStream() {
   const [error, setError] = useState(null);
   const [cached, setCachedState] = useState(false);
   const [computedTargets, setComputedTargets] = useState(null);
+  const [fairValue, setFairValue] = useState(null);
   const cancelRef = useRef(null);
   const rawTextRef = useRef('');
 
@@ -36,6 +37,7 @@ export function useClaudeStream() {
     if (entry) {
       setAnalysis(entry.analysis);
       setComputedTargets(entry.computedTargets ?? null);
+      setFairValue(entry.fairValue ?? null);
       setError(null);
       setRawText('');
       setCachedState(true);
@@ -43,6 +45,7 @@ export function useClaudeStream() {
     }
     setAnalysis(null);
     setComputedTargets(null);
+    setFairValue(null);
     setCachedState(false);
     return false;
   }, []);
@@ -56,9 +59,11 @@ export function useClaudeStream() {
     setError(null);
     setCachedState(false);
     setComputedTargets(null);
+    setFairValue(null);
     rawTextRef.current = '';
 
     let targets = null;
+    let fv = null;
     cancelRef.current = streamAnalysis(
       symbol,
       (chunk) => {
@@ -75,7 +80,7 @@ export function useClaudeStream() {
           }
           const parsed = JSON.parse(text);
           setAnalysis(parsed);
-          setCached(symbol, { analysis: parsed, computedTargets: targets });
+          setCached(symbol, { analysis: parsed, computedTargets: targets, fairValue: fv });
         } catch {
           setError('Failed to parse Claude response as JSON');
         }
@@ -87,6 +92,10 @@ export function useClaudeStream() {
       (pt) => {
         targets = pt;
         setComputedTargets(pt);
+      },
+      (fvData) => {
+        fv = fvData;
+        setFairValue(fvData);
       }
     );
   }, []);
@@ -95,5 +104,5 @@ export function useClaudeStream() {
     return () => cancelRef.current?.();
   }, []);
 
-  return { rawText, analysis, streaming, error, cached, computedTargets, startAnalysis, loadCachedAnalysis };
+  return { rawText, analysis, streaming, error, cached, computedTargets, fairValue, startAnalysis, loadCachedAnalysis };
 }

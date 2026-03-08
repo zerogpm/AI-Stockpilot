@@ -113,6 +113,16 @@ router.get('/:symbol', async (req, res) => {
       };
     }
 
+    if (data.financialData?.debtToEquity == null) {
+      const totalDebt = data.financialData?.totalDebt;
+      const bv = data.defaultKeyStatistics?.bookValue;
+      const shares = data.defaultKeyStatistics?.sharesOutstanding;
+      if (totalDebt != null && bv && shares) {
+        data.financialData = data.financialData || {};
+        data.financialData.debtToEquity = (totalDebt / (bv * shares)) * 100;
+      }
+    }
+
     res.json({
       stock: {
         price: data.price,
