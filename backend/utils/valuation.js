@@ -129,7 +129,45 @@ export function calculateFairValueSeries({
       };
     });
 
-  // Step 6: Current valuation verdict
+  // Step 6b: Project forward fair values using forward EPS
+  if (forwardEPS && forwardEPS > 0 && chartData.length > 0) {
+    const lastPoint = chartData[chartData.length - 1];
+    const [lastYear, lastMonth] = lastPoint.date.split('-').map(Number);
+
+    // Bridge: add projected keys to last historical point for seamless line connection
+    lastPoint.projectedFairOrange = lastPoint.fairValueOrange;
+    lastPoint.projectedFairBlue = lastPoint.fairValueBlue;
+
+    const year1EPS = forwardEPS;
+    const safeGrowth = Math.max(0, epsGrowthRate);
+    const year2EPS = forwardEPS * (1 + safeGrowth / 100);
+
+    for (let i = 1; i <= 24; i++) {
+      let m = lastMonth + i;
+      let y = lastYear;
+      while (m > 12) { m -= 12; y += 1; }
+
+      const projEPS = i <= 12 ? year1EPS : year2EPS;
+      const dateStr = `${y}-${String(m).padStart(2, '0')}`;
+
+      const point = {
+        date: dateStr,
+        actualPrice: null,
+        fairValueOrange: null,
+        fairValueBlue: null,
+        projectedFairOrange: round2(projEPS * fairPE_orange),
+        projectedFairBlue: round2(projEPS * historicalAvgPE),
+      };
+
+      if (m === 12) {
+        point.projectedEps = round2(projEPS);
+      }
+
+      chartData.push(point);
+    }
+  }
+
+  // Step 7: Current valuation verdict
   const latestEPS = annualEPS.length > 0 ? annualEPS[annualEPS.length - 1].eps : 1;
   const currentFairValue = latestEPS * historicalAvgPE;
   const forwardFairValue = forwardEPS ? forwardEPS * historicalAvgPE : null;

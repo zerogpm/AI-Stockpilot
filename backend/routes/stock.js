@@ -120,6 +120,17 @@ router.get('/:symbol', async (req, res) => {
         }),
         chartType: 'valuation',
       };
+
+      // Analyst consensus price targets
+      const fd = data.financialData || {};
+      if (fd.targetMeanPrice != null) {
+        chart.analystTargets = {
+          mean: fd.targetMeanPrice,
+          high: fd.targetHighPrice ?? null,
+          low: fd.targetLowPrice ?? null,
+          numberOfAnalysts: fd.numberOfAnalystOpinions ?? null,
+        };
+      }
     }
 
     if (data.financialData?.debtToEquity == null) {

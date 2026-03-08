@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ComposedChart,
   Line,
@@ -8,6 +8,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
+  ReferenceArea,
 } from 'recharts';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +22,9 @@ function getValuationSeries(fairPE) {
     { key: 'eps', label: 'Annual EPS', color: '#82ca9d' },
     { key: 'fairValueOrange', label: `Fair Value (${peLabel} P/E)`, color: '#FF8C00' },
     { key: 'fairValueBlue', label: 'Fair Value (Hist. Avg P/E)', color: '#4169E1' },
+    { key: 'projectedFair', label: 'Projected Fair Value', color: '#FF8C00' },
+    { key: 'projectedEps', label: 'Projected EPS', color: '#82ca9d' },
+    { key: 'analystTargets', label: 'Analysts', color: '#a855f7' },
   ];
 }
 
@@ -32,6 +37,15 @@ const SMA_SERIES = [
 const DATE_RANGES = ['1M', '3M', '6M', 'YTD', '1Y', '2Y', '5Y', '10Y', 'ALL'];
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function niceInterval(range) {
+  if (range <= 20) return 2;
+  if (range <= 50) return 5;
+  if (range <= 200) return 10;
+  if (range <= 500) return 25;
+  if (range <= 2000) return 50;
+  return 100;
+}
 
 function getXAxisConfig(range, isSMA) {
   const configs = {
@@ -116,14 +130,81 @@ export default function ValuationChart({ chartData, theme, selectedRange, onRang
 
   const xAxisConfig = getXAxisConfig(selectedRange, isSMA);
 
+  const [visibleSeries, setVisibleSeries] = useState({
+    actualPrice: true,
+    eps: true,
+    fairValueOrange: true,
+    fairValueBlue: true,
+    projectedFair: true,
+    projectedEps: true,
+    analystTargets: true,
+    sma50: true,
+    sma200: true,
+  });
+
+  // Drag-to-zoom state
+  const [zoomArea, setZoomArea] = useState({ start: null, end: null });
+  const [zoomRange, setZoomRange] = useState(null);
+
+  const displayData = useMemo(() => {
+    if (!zoomRange) return filteredData;
+    return filteredData.slice(zoomRange.left, zoomRange.right + 1);
+  }, [filteredData, zoomRange]);
+
+  const handleMouseDown = useCallback((e) => {
+    if (e?.activeLabel) setZoomArea({ start: e.activeLabel, end: null });
+  }, []);
+
+  const handleMouseMove = useCallback((e) => {
+    if (zoomArea.start && e?.activeLabel) {
+      setZoomArea((prev) => ({ ...prev, end: e.activeLabel }));
+    }
+  }, [zoomArea.start]);
+
+  const handleMouseUp = useCallback(() => {
+    const { start, end } = zoomArea;
+    if (!start || !end || start === end) {
+      setZoomArea({ start: null, end: null });
+      return;
+    }
+    // Find indices in filteredData
+    let leftIdx = filteredData.findIndex((d) => d.date === start);
+    let rightIdx = filteredData.findIndex((d) => d.date === end);
+    if (leftIdx < 0 || rightIdx < 0) {
+      setZoomArea({ start: null, end: null });
+      return;
+    }
+    // Support right-to-left drag
+    if (leftIdx > rightIdx) [leftIdx, rightIdx] = [rightIdx, leftIdx];
+    // Ignore tiny selections
+    if (rightIdx - leftIdx < 2) {
+      setZoomArea({ start: null, end: null });
+      return;
+    }
+    setZoomRange({ left: leftIdx, right: rightIdx });
+    setZoomArea({ start: null, end: null });
+  }, [zoomArea, filteredData]);
+
+  const resetZoom = useCallback(() => setZoomRange(null), []);
+
+  // Compute dynamic X-axis interval for zoomed view
+  const zoomXInterval = useMemo(() => {
+    if (!zoomRange) return xAxisConfig.interval;
+    const count = zoomRange.right - zoomRange.left + 1;
+    if (count <= 12) return 0;
+    if (count <= 24) return 1;
+    if (count <= 48) return 2;
+    return Math.floor(count / 12);
+  }, [zoomRange, xAxisConfig.interval]);
+
   const priceDomain = useMemo(() => {
-    if (!filteredData.length) return [0, 'auto'];
+    if (!displayData.length) return [0, 'auto'];
     const priceKeys = isSMA
       ? ['actualPrice', 'sma50', 'sma200']
-      : ['actualPrice', 'fairValueOrange', 'fairValueBlue'];
+      : ['actualPrice', 'fairValueOrange', 'fairValueBlue', 'projectedFairOrange', 'projectedFairBlue'];
     let min = Infinity;
     let max = -Infinity;
-    for (const point of filteredData) {
+    for (const point of displayData) {
       for (const key of priceKeys) {
         const v = point[key];
         if (v != null) {
@@ -132,19 +213,20 @@ export default function ValuationChart({ chartData, theme, selectedRange, onRang
         }
       }
     }
+    if (visibleSeries.analystTargets && chartData?.analystTargets) {
+      const at = chartData.analystTargets;
+      if (at.high != null && at.high > max) max = at.high;
+      if (at.low != null && at.low < min) min = at.low;
+    }
     if (min === Infinity) return [0, 'auto'];
     const padding = (max - min) * 0.1 || max * 0.05;
-    return [Math.max(0, Math.floor(min - padding)), Math.ceil(max + padding)];
-  }, [filteredData, isSMA]);
-
-  const [visibleSeries, setVisibleSeries] = useState({
-    actualPrice: true,
-    eps: true,
-    fairValueOrange: true,
-    fairValueBlue: true,
-    sma50: true,
-    sma200: true,
-  });
+    const range = max - min + 2 * padding;
+    const step = niceInterval(range);
+    return [
+      Math.max(0, Math.floor((min - padding) / step) * step),
+      Math.ceil((max + padding) / step) * step,
+    ];
+  }, [displayData, isSMA, visibleSeries.analystTargets, chartData?.analystTargets]);
 
   const toggleSeries = (key) => {
     setVisibleSeries((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -154,7 +236,7 @@ export default function ValuationChart({ chartData, theme, selectedRange, onRang
   const colors = {
     grid: isDark ? '#334155' : '#e2e8f0',
     actualPrice: isDark ? '#e2e8f0' : '#1e293b',
-    text: isDark ? '#94a3b8' : '#475569',
+    text: isDark ? '#cbd5e1' : '#334155',
     tooltipBg: isDark ? '#1e293b' : '#ffffff',
     tooltipBorder: isDark ? '#334155' : '#e2e8f0',
   };
@@ -200,26 +282,38 @@ export default function ValuationChart({ chartData, theme, selectedRange, onRang
           ))}
         </div>
         <ResponsiveContainer width="100%" height={500}>
-          <ComposedChart data={filteredData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
+          <ComposedChart
+            data={displayData}
+            margin={{ top: 10, right: 50, left: 10, bottom: 10 }}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onDoubleClick={resetZoom}
+            style={{ cursor: zoomArea.start ? 'col-resize' : 'crosshair' }}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
             <XAxis
               dataKey="date"
               tickFormatter={xAxisConfig.tickFormatter}
-              interval={xAxisConfig.interval}
-              tick={{ fontSize: 12, fill: colors.text }}
+              interval={zoomRange ? zoomXInterval : xAxisConfig.interval}
+              tick={{ fontSize: 13, fill: colors.text }}
             />
             <YAxis
               yAxisId="price"
               orientation="left"
               domain={priceDomain}
-              tick={{ fontSize: 12, fill: colors.text }}
+              tickCount={8}
+              allowDecimals={false}
+              tick={{ fontSize: 13, fill: colors.text }}
               label={{ value: 'Price ($)', angle: -90, position: 'insideLeft', offset: -5, fill: colors.text }}
             />
             {!isSMA && (
               <YAxis
                 yAxisId="eps"
                 orientation="right"
-                tick={{ fontSize: 12, fill: colors.text }}
+                tickCount={6}
+                allowDecimals={false}
+                tick={{ fontSize: 13, fill: colors.text }}
                 label={{ value: 'EPS ($)', angle: 90, position: 'insideRight', offset: -5, fill: colors.text }}
               />
             )}
@@ -293,25 +387,137 @@ export default function ValuationChart({ chartData, theme, selectedRange, onRang
                   name="Fair Value (Hist. Avg P/E)"
                   hide={!visibleSeries.fairValueBlue}
                 />
+                <Line
+                  yAxisId="price"
+                  type="monotone"
+                  dataKey="projectedFairOrange"
+                  stroke="#FF8C00"
+                  dot={false}
+                  strokeWidth={2}
+                  strokeDasharray="3 3"
+                  name={`Projected (${chartData?.fairPE_orange ?? 15}x P/E)`}
+                  hide={!visibleSeries.projectedFair}
+                />
+                <Line
+                  yAxisId="price"
+                  type="monotone"
+                  dataKey="projectedFairBlue"
+                  stroke="#4169E1"
+                  dot={false}
+                  strokeWidth={2}
+                  strokeDasharray="3 3"
+                  name="Projected (Hist. Avg P/E)"
+                  hide={!visibleSeries.projectedFair}
+                />
+                <Bar
+                  yAxisId="eps"
+                  dataKey="projectedEps"
+                  fill="#82ca9d"
+                  opacity={0.3}
+                  name="Projected EPS"
+                  hide={!visibleSeries.projectedEps}
+                />
+              </>
+            )}
+
+            {!isSMA && chartData?.analystTargets && visibleSeries.analystTargets && (
+              <>
+                {chartData.analystTargets.low != null && chartData.analystTargets.high != null && (
+                  <ReferenceArea
+                    yAxisId="price"
+                    y1={chartData.analystTargets.low}
+                    y2={chartData.analystTargets.high}
+                    fill="#a855f7"
+                    fillOpacity={0.03}
+                    stroke="#a855f7"
+                    strokeOpacity={0.15}
+                    strokeDasharray="3 3"
+                  />
+                )}
+                <ReferenceLine
+                  yAxisId="price"
+                  y={chartData.analystTargets.mean}
+                  stroke="#a855f7"
+                  strokeDasharray="4 4"
+                  strokeWidth={1.5}
+                  label={({ viewBox }) => {
+                    const text = `Analyst Target: $${chartData.analystTargets.mean.toFixed(0)}${chartData.analystTargets.numberOfAnalysts ? ` (${chartData.analystTargets.numberOfAnalysts} analysts)` : ''}`;
+                    const x = (viewBox?.x ?? 0) + 8;
+                    const y = (viewBox?.y ?? 0) - 6;
+                    return (
+                      <g>
+                        <rect
+                          x={x - 4}
+                          y={y - 12}
+                          width={text.length * 6.2 + 8}
+                          height={18}
+                          rx={4}
+                          fill={isDark ? '#1e1b2e' : '#faf5ff'}
+                          stroke="#a855f7"
+                          strokeWidth={0.5}
+                          opacity={0.95}
+                        />
+                        <text
+                          x={x}
+                          y={y}
+                          fill="#a855f7"
+                          fontSize={12}
+                          fontWeight={600}
+                        >
+                          {text}
+                        </text>
+                      </g>
+                    );
+                  }}
+                />
               </>
             )}
 
             <Tooltip
-              formatter={(value, name) =>
-                value != null ? [`$${value.toFixed(2)}`, name] : ['-', name]
-              }
+              formatter={(value, name) => {
+                if (value == null) return ['-', name];
+                const isProjected = name.startsWith('Projected');
+                return [`$${value.toFixed(2)}${isProjected ? ' (est.)' : ''}`, name];
+              }}
               labelFormatter={(label) => `Date: ${label}`}
               contentStyle={{ backgroundColor: colors.tooltipBg, borderColor: colors.tooltipBorder, color: colors.text }}
               labelStyle={{ color: colors.text }}
             />
+
+            {zoomArea.start && zoomArea.end && (
+              <ReferenceArea
+                yAxisId="price"
+                x1={zoomArea.start}
+                x2={zoomArea.end}
+                strokeOpacity={0.3}
+                fill={isDark ? '#6366f1' : '#818cf8'}
+                fillOpacity={0.15}
+              />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
-        <DateRangeSelector
-          selected={selectedRange}
-          onChange={onRangeChange}
-          isDark={isDark}
-          isSMA={isSMA}
-        />
+        <div className="flex items-center justify-center gap-2">
+          <DateRangeSelector
+            selected={selectedRange}
+            onChange={(range) => { setZoomRange(null); onRangeChange(range); }}
+            isDark={isDark}
+            isSMA={isSMA}
+          />
+          {zoomRange && (
+            <button
+              onClick={resetZoom}
+              className={[
+                'px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-all duration-150',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500',
+                isDark
+                  ? 'text-red-400 hover:text-red-300 hover:bg-white/5 border border-red-400/30'
+                  : 'text-red-500 hover:text-red-600 hover:bg-red-50 border border-red-300',
+              ].join(' ')}
+            >
+              Reset Zoom
+            </button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

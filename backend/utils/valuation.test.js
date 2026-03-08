@@ -336,4 +336,71 @@ describe('calculateFairValueSeries', () => {
     expect(result.fairPE_orange).toBe(15);
     expect(result.sectorBasePE).toBe(DEFAULT_SECTOR_PE);
   });
+
+  it('appends 24 projected data points when forwardEPS is provided', () => {
+    const result = calculateFairValueSeries({
+      incomeStatements: [
+        makeStatement(2022, 2.0),
+        makeStatement(2023, 2.5),
+      ],
+      historicalPrices: makePrices(2022, 2023, 40),
+      sharesOutstanding: 1000000,
+      forwardEPS: 3.0,
+      currentPrice: 50,
+    });
+
+    const projected = result.chartData.filter((d) => d.projectedFairOrange != null);
+    // 24 future points + 1 bridge point (last historical)
+    expect(projected.length).toBe(25);
+    // Future points should have null actualPrice
+    const futureOnly = projected.filter((d) => d.actualPrice === null);
+    expect(futureOnly.length).toBe(24);
+  });
+
+  it('does not append projections when forwardEPS is null', () => {
+    const result = calculateFairValueSeries({
+      incomeStatements: [makeStatement(2023, 3.0)],
+      historicalPrices: makePrices(2023, 2023, 45),
+      sharesOutstanding: 1000000,
+      forwardEPS: null,
+      currentPrice: 50,
+    });
+
+    const projected = result.chartData.filter((d) => d.projectedFairOrange != null);
+    expect(projected.length).toBe(0);
+  });
+
+  it('bridges last historical point with projected keys', () => {
+    const result = calculateFairValueSeries({
+      incomeStatements: [makeStatement(2023, 3.0)],
+      historicalPrices: makePrices(2023, 2023, 45),
+      sharesOutstanding: 1000000,
+      forwardEPS: 3.5,
+      currentPrice: 50,
+    });
+
+    // Find last point that has both historical and projected values
+    const bridge = result.chartData.find(
+      (d) => d.fairValueOrange != null && d.projectedFairOrange != null && d.actualPrice != null
+    );
+    expect(bridge).toBeDefined();
+    expect(bridge.projectedFairOrange).toBe(bridge.fairValueOrange);
+    expect(bridge.projectedFairBlue).toBe(bridge.fairValueBlue);
+  });
+
+  it('adds projectedEps only at December months', () => {
+    const result = calculateFairValueSeries({
+      incomeStatements: [makeStatement(2023, 3.0)],
+      historicalPrices: makePrices(2023, 2023, 45),
+      sharesOutstanding: 1000000,
+      forwardEPS: 3.5,
+      currentPrice: 50,
+    });
+
+    const withProjectedEps = result.chartData.filter((d) => d.projectedEps != null);
+    expect(withProjectedEps.length).toBeGreaterThan(0);
+    for (const point of withProjectedEps) {
+      expect(point.date.endsWith('-12')).toBe(true);
+    }
+  });
 });
