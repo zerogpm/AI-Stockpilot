@@ -114,6 +114,29 @@
     }
   },
   "tickers": {
+    "ABBV": {
+      "industry": "Drug Manufacturers - General",
+      "additionalContext": [
+        "ABBV's trailing P/E (~97x) and 5-year historical avg P/E (~50x) are MEANINGLESS for valuation. TTM EPS (~$2.36) is temporarily depressed by the Humira biosimilar patent cliff (lost exclusivity Jan 2023) and one-time charges. Normalized P/E is ~15-20x. Do NOT use trailing P/E as a valuation anchor.",
+        "Humira revenue dropped from ~$21B peak to ~$5-6B from biosimilar competition. This is a known, one-time headwind nearing the trough.",
+        "Skyrizi (IL-23) and Rinvoq (JAK inhibitor) are the replacement growth drivers — combined revenue expected to exceed $27B by 2027, fully replacing Humira. Both have expanding label indications across immunology.",
+        "Key metrics: forward adjusted EPS (not GAAP trailing), Skyrizi+Rinvoq revenue trajectory, immunology franchise market share, pipeline readouts (neuroscience, oncology), FCF and dividend coverage.",
+        "GAAP profit margin appears low (~6-7%) due to large acquisition-related amortization and one-time items. Adjusted operating margin is ~45-50%. Do NOT cite GAAP profit margin as a fundamental weakness.",
+        "Dividend Aristocrat with 50+ consecutive years of dividend increases (including Abbott legacy). ~3.5% yield is well-covered by adjusted earnings and FCF."
+      ],
+      "dataOverrides": {
+        "forwardEPS": {
+          "range": [14.37, 14.57],
+          "source": "FY2026 adjusted EPS company guidance (Q4 2025 earnings)"
+        }
+      },
+      "valuationNotes": "Trailing EPS (~$2.36) and GAAP earnings are severely distorted by Humira biosimilar impact, acquisition amortization, and one-time charges. Historical avg P/E is capped at 50x from inflated recent-year ratios — this does NOT reflect normalized valuation of ~15-20x. Weight company forward adjusted EPS guidance ($14.37-$14.57) as the primary earnings reference. Yahoo forward EPS (~$16) may be optimistic — use guidance midpoint ($14.47).",
+      "scenarios": {
+        "bear": { "peMult": 0.26, "peMin": 12, "peMax": 15 },
+        "base": { "peMult": 0.34, "peMin": 15, "peMax": 18 },
+        "bull": { "peMult": 0.44, "peMin": 18, "peMax": 22 }
+      }
+    },
     "LMT": {
       "industry": "Aerospace & Defense",
       "additionalContext": [

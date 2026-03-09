@@ -123,4 +123,41 @@ describe('getStockProfile', () => {
     expect(profile.dataOverrides).toBeNull();
     expect(profile.valuationNotes).toBeNull();
   });
+
+  it('returns ABBV profile with ticker-level scenario overrides', () => {
+    const profile = getStockProfile('ABBV', '');
+    expect(profile).not.toBeNull();
+    expect(profile.matched.ticker).toBe(true);
+    expect(profile.matched.industry).toBe('Drug Manufacturers - General');
+    expect(profile.sectorPEOverride).toBe(18);
+    // Ticker scenarios should override industry scenarios
+    expect(profile.scenarios.bear.peMult).toBe(0.26);
+    expect(profile.scenarios.base.peMult).toBe(0.34);
+    expect(profile.scenarios.bull.peMult).toBe(0.44);
+    expect(profile.scenarios.bull.peMax).toBe(22);
+  });
+
+  it('returns ABBV dataOverrides and valuationNotes', () => {
+    const profile = getStockProfile('ABBV', '');
+    expect(profile.dataOverrides.forwardEPS.range).toEqual([14.37, 14.57]);
+    expect(profile.dataOverrides.forwardEPS.source).toContain('FY2026');
+    expect(profile.valuationNotes).toContain('Trailing EPS');
+    expect(profile.valuationNotes).toContain('14.37');
+  });
+
+  it('ABBV promptContext includes both industry and ticker context', () => {
+    const profile = getStockProfile('ABBV', '');
+    // Industry context (Drug Manufacturers)
+    expect(profile.promptContext.some(c => c.includes('patent cliff'))).toBe(true);
+    // Ticker context (ABBV-specific)
+    expect(profile.promptContext.some(c => c.includes('Humira'))).toBe(true);
+    expect(profile.promptContext.some(c => c.includes('Skyrizi'))).toBe(true);
+  });
+
+  it('LMT still gets industry scenarios when ticker has no scenario overrides', () => {
+    const profile = getStockProfile('LMT', '');
+    // LMT has no ticker-level scenarios, should get Aerospace & Defense industry scenarios
+    expect(profile.scenarios.bear.peMult).toBe(0.85);
+    expect(profile.scenarios.bull.peMax).toBe(30);
+  });
 });

@@ -338,11 +338,23 @@ Today's Date: ${today}
 ---
 
 ## Analysis Instructions
-1. CONCENTRATION IS THE STORY: Identify the top sector or holding concentration (e.g. Magnificent 7 in QQQ). What % of the ETF is in its top 10 holdings? This is the single most important structural fact.
-2. VALUATION IN CONTEXT: State P/E TTM. Then contextualize it — is this high or low FOR THIS ETF historically? A P/E of 30x may be normal for a Nasdaq-100 ETF. Do not compare to the S&P 500 without noting the difference.
-3. GROWTH DRIVERS: What are the 1-2 actual themes driving performance right now (AI, semiconductors, cloud, etc.)? Be specific — do not say "technology innovation" generically.
-4. NEWS RECONCILIATION: If any headline suggests a competing ETF is a better option, address it directly. Do not ignore it.
-5. DO NOT discuss dividend yield for a growth ETF — it is irrelevant and distracts from the core analysis.
+1. PRICE CONTEXT: Begin by stating the current price/NAV explicitly (e.g. "QQQ is currently trading at $485.20"). This anchors the entire analysis for the reader.
+2. CONCENTRATION IS THE STORY: Identify the top sector or holding concentration (e.g. Magnificent 7 in QQQ). What % of the ETF is in its top 10 holdings? This is the single most important structural fact.
+3. VALUATION — DUAL P/E ANALYSIS: Compare BOTH the trailing P/E AND forward P/E to their respective historical reference ranges provided in the data above. State all numbers explicitly (e.g. "Trailing P/E of 32x vs the Nasdaq-100 historical average of 25-28x; forward P/E of 26x vs the forward average of 22-28x"). The forward P/E is critical because growth ETFs often look expensive on trailing earnings while being more reasonable on forward earnings due to high earnings growth. If forward P/E is N/A, note this and rely on trailing P/E with appropriate caveats.
+4. GROWTH DRIVERS: What are the 1-2 actual themes driving performance right now (AI, semiconductors, cloud, etc.)? Be specific — do not say "technology innovation" generically.
+5. MACRO CONTEXT: Identify 1-2 current macro factors directly relevant to growth/tech performance RIGHT NOW (rates, tariffs, antitrust, AI capex cycle, etc.). You MUST reference the news headlines — explain what is happening and why it matters for this ETF.
+6. FUND QUALITY: Note the expense ratio and how it compares to alternatives (QQQM charges 0.15%, SCHG charges 0.04%). If the expense ratio data is available, mention it.
+7. TECHNICAL POSITION: State where price sits relative to 50-day and 200-day moving averages. Keep this to one sentence — it is secondary.
+8. NEWS RECONCILIATION: If any headline suggests a competing ETF is a better option, or mentions tech/growth headwinds, address it directly. Do not ignore it.
+9. RISKS: List only risks specific to current conditions — not generic boilerplate. "Valuation compression" is only valid if P/E is above historical range.
+10. CATALYSTS: Must be specific and current — cite concrete events, data releases, or policy decisions. BANNED generic catalysts: "AI tailwinds", "earnings growth", "tech innovation". If you cannot name a specific upcoming catalyst, say there are no near-term catalysts.
+11. PRICE FORECASTS: Each forecast MUST state BOTH the macro assumption AND the valuation logic behind it (e.g. "Base case assumes forward P/E normalizes to 26x on estimated index earnings, with 2 rate cuts and stable AI capex"). Do not give targets without stating what P/E multiple and earnings assumption produces them.
+12. DO NOT discuss dividend yield for a growth ETF — it is irrelevant and distracts from the core analysis.
+
+HARD CONSTRAINTS:
+- If both trailing P/E and forward P/E data are available, you MUST discuss both. Do not present trailing P/E alone as the complete valuation picture.
+- During ANY period of macro uncertainty (rate changes, tariff disputes, tech regulation, antitrust actions, recession fears), confidence MUST be MEDIUM or LOW, never HIGH. The bar for HIGH confidence is: forward P/E at or below the historical average range AND macro conditions clearly supportive.
+- Forecasts without valuation logic (P/E multiple x earnings assumption) are NOT allowed. Every target must show its math.
 
 ${UNIVERSAL_RULES}
 
@@ -357,7 +369,7 @@ ${buildJSONInstruction({
     },
     {
       title: 'Valuation Analysis',
-      desc: '2-3 sentences with historical context for this ETF type',
+      desc: '2-3 sentences comparing BOTH trailing and forward P/E to their historical reference ranges (cite all numbers). Note whether forward P/E tells a different story than trailing.',
     },
   ],
   callout: null,

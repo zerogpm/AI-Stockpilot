@@ -1,7 +1,5 @@
 # Stock Analysis Dashboard
 
-<a href="https://buymeacoffee.com/jiansu" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="40"></a>
-
 Search any stock, see valuation charts, key metrics, and get AI-powered analysis from Claude.
 
 ## Features
@@ -154,3 +152,7 @@ Equivalent to `./stop.sh` then `./start.sh`.
 **start.sh won't run**
 - Windows: use Git Bash, not Command Prompt or PowerShell
 - Mac/Linux: run `chmod +x start.sh stop.sh setup.sh restart.sh` first
+
+---
+
+<a href="https://buymeacoffee.com/jiansu" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="40"></a>

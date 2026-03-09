@@ -41,10 +41,20 @@ export function getStockProfile(symbol, yahooIndustry) {
     ...(tickerProfile?.additionalContext || []),
   ];
 
+  // Merge ticker scenarios over industry scenarios
+  const industryScenarios = industryProfile?.scenarios ?? {};
+  const tickerScenarios = tickerProfile?.scenarios ?? {};
+  const mergedKeys = new Set([...Object.keys(industryScenarios), ...Object.keys(tickerScenarios)]);
+  const mergedScenarios = {};
+  for (const key of mergedKeys) {
+    mergedScenarios[key] = { ...(industryScenarios[key] || {}), ...(tickerScenarios[key] || {}) };
+  }
+  const scenarios = mergedKeys.size > 0 ? mergedScenarios : null;
+
   return {
     sectorPEOverride: industryProfile?.sectorPEOverride ?? null,
     fairPERange: industryProfile?.fairPERange ?? null,
-    scenarios: industryProfile?.scenarios ?? null,
+    scenarios,
     promptContext,
     dataOverrides: tickerProfile?.dataOverrides || null,
     valuationNotes: tickerProfile?.valuationNotes || null,
