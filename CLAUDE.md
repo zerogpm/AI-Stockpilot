@@ -14,12 +14,22 @@
 
 ## Testing
 - Always run relevant tests before marking work as done
+- When fixing bugs, write a regression test covering the fix
+- When adding new logic, write unit tests covering the new behavior
 - Backend: Vitest (utils + route helpers)
 - Frontend: Vitest + jsdom (hooks, cache logic)
+
+## Debugging Guidelines
+- When fixing a bug, identify the root cause before implementing a fix. Do not apply surface-level patches (e.g., capping values, string parsing) without understanding why the data is wrong upstream
+- When the user reports an issue, check ALL layers (frontend UI, backend API, prompt logic, data pipeline) before declaring the fix complete
 
 ## General Behaviour
 - When asked to fix or change something, focus on the specific scope requested
 - Do NOT modify unrelated code, run builds, or generate artifacts (e.g., dist/) during verification unless explicitly asked
+
+## Communication Style
+- When the user asks a simple question, give a concise answer first. Do NOT extensively explore the codebase or enter plan mode unless the question requires it
+- Ask before deep-diving
 
 ## Documentation
 - Project uses JavaScript, TypeScript, and YAML primarily; docs are Markdown-based
