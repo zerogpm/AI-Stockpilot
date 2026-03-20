@@ -1,3 +1,5 @@
+import { buildPeerPromptSection } from './peerPrompt.js';
+
 export const KNOWN_EXPENSE_RATIOS = {
   VOO: 0.03, SPY: 0.09, IVV: 0.03, VTI: 0.03, SPLG: 0.02,
   QQQ: 0.20, QQQM: 0.15, SCHD: 0.06, VYM: 0.06, SCHG: 0.04,
@@ -583,7 +585,11 @@ const PROMPT_BUILDERS = {
   THEMATIC: buildThematicPrompt,
 };
 
-export function buildETFAnalysisPrompt(etfType, stock, news, dividendInfo) {
+export function buildETFAnalysisPrompt(etfType, stock, news, dividendInfo, peerComparison) {
   const builder = PROMPT_BUILDERS[etfType] || buildBroadMarketPrompt;
-  return builder(stock, news, dividendInfo);
+  let prompt = builder(stock, news, dividendInfo);
+  if (peerComparison) {
+    prompt = prompt.replace(/\n---\n/, `\n${buildPeerPromptSection(peerComparison)}\n---\n`);
+  }
+  return prompt;
 }

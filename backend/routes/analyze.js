@@ -11,8 +11,9 @@ import { isBank } from '../utils/bankClassifier.js';
 import { buildBankPrompt } from '../utils/bankPrompts.js';
 import { computeBankPriceTargets } from '../utils/bankPriceTargets.js';
 import { getStockProfile } from '../utils/stockProfiles.js';
-import { generateAndSaveProfile } from '../services/profileGenerator.js';
+import { generateAndSaveProfile, isProfileStale } from '../services/profileGenerator.js';
 import { buildPeerComparison } from '../services/peerDiscovery.js';
+import { buildPeerPromptSection } from '../utils/peerPrompt.js';
 
 const router = Router();
 
@@ -46,7 +47,7 @@ function getAssetType(data) {
   return 'stock';
 }
 
-function buildREITPrompt(stock, news, reitMetrics) {
+function buildREITPrompt(stock, news, reitMetrics, peerComparison) {
   const p = stock.price || {};
   const fd = stock.financialData || {};
   const sd = stock.summaryDetail || {};
@@ -115,7 +116,7 @@ ${preamble}
 
 ## Recent News Headlines
 ${newsSection || 'No recent news available.'}
-
+${peerComparison ? buildPeerPromptSection(peerComparison) : ''}
 ---
 
 Determine an action recommendation based on: STRONG_BUY = significantly undervalued with high conviction and strong dividend sustainability; BUY = moderately undervalued or good entry point; HOLD = fair value or mixed signals; SELL = overvalued with headwinds; STRONG_SELL = significantly overvalued with high downside risk or dividend at risk.
@@ -149,47 +150,6 @@ Return ONLY the JSON object, no markdown code fences or other text.`;
 }
 
 // buildETFPrompt replaced by etfClassifier + etfPrompts modules
-
-function buildPeerPromptSection(pc) {
-  const { target, peers, medians } = pc;
-  const fmtVal = (v, isPct) => {
-    if (v == null) return 'N/A';
-    return isPct ? `${(v * 100).toFixed(1)}%` : v.toFixed(2);
-  };
-  const relative = (val, med, lowerIsBetter) => {
-    if (val == null || med == null) return 'N/A';
-    const diff = ((val - med) / med) * 100;
-    if (Math.abs(diff) < 5) return 'In-line';
-    if (lowerIsBetter) return diff < 0 ? 'Favorable' : 'Elevated';
-    return diff > 0 ? 'Favorable' : 'Below peers';
-  };
-
-  const metrics = [
-    { label: 'Trailing P/E', key: 'trailingPE', pct: false, lowerBetter: true },
-    { label: 'Forward P/E', key: 'forwardPE', pct: false, lowerBetter: true },
-    { label: 'Revenue Growth', key: 'revenueGrowth', pct: true, lowerBetter: false },
-    { label: 'Profit Margin', key: 'profitMargin', pct: true, lowerBetter: false },
-    { label: 'Debt/Equity', key: 'debtToEquity', pct: false, lowerBetter: true },
-    { label: 'Dividend Yield', key: 'dividendYield', pct: true, lowerBetter: false },
-  ];
-
-  const rows = metrics.map((m) =>
-    `| ${m.label} | ${fmtVal(target[m.key], m.pct)} | ${fmtVal(medians[m.key], m.pct)} | ${relative(target[m.key], medians[m.key], m.lowerBetter)} |`
-  ).join('\n');
-
-  const peerNames = peers.map((p) => `${p.symbol} (${p.name})`).join(', ');
-
-  return `
-## Peer Comparison Context
-| Metric | ${target.symbol} | Peer Median | Relative |
-|--------|------|-------------|----------|
-${rows}
-
-Peers: ${peerNames}
-
-When assessing valuation, comment on how this stock's P/E and growth metrics compare to its peer group median. If trading at a premium or discount to peers, explain whether this is justified by fundamentals.
-`;
-}
 
 function buildPrompt(stock, chart, news, priceTargets, profile, peerComparison) {
   const profileContext = profile?.promptContext || [];
@@ -339,8 +299,8 @@ router.post('/', async (req, res) => {
 
     let stockProfile = await getStockProfile(upperSymbol, industry);
 
-    // Auto-generate profile for stocks that don't have one
-    if (!stockProfile && assetType === 'stock') {
+    // Auto-generate or refresh stale profile (stocks, REITs, banks)
+    if (['stock', 'reit', 'bank'].includes(assetType) && (!stockProfile || isProfileStale(stockProfile))) {
       // Set SSE headers early so we can send the generating event
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
@@ -371,12 +331,9 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // Start peer comparison fetch in parallel (stocks only)
-    let peerComparisonPromise = null;
-    if (assetType === 'stock') {
-      peerComparisonPromise = buildPeerComparison(upperSymbol, data, stockProfile)
-        .catch((err) => { console.warn(`Peer comparison failed for ${upperSymbol}:`, err.message); return null; });
-    }
+    // Start peer comparison fetch in parallel (all asset types)
+    const peerComparisonPromise = buildPeerComparison(upperSymbol, data, stockProfile)
+      .catch((err) => { console.warn(`Peer comparison failed for ${upperSymbol}:`, err.message); return null; });
 
     const guidanceEPS = stockProfile?.dataOverrides?.forwardEPS?.range;
     const effectiveForwardEPS = guidanceEPS
@@ -452,10 +409,7 @@ router.post('/', async (req, res) => {
     }
 
     // Await peer comparison before building prompt (needed for prompt injection)
-    let peerComparison = null;
-    if (peerComparisonPromise) {
-      peerComparison = await peerComparisonPromise;
-    }
+    const peerComparison = await peerComparisonPromise;
 
     let prompt;
     let etfType = null;
@@ -479,11 +433,11 @@ router.post('/', async (req, res) => {
         peRatio: sd.trailingPE ?? null,
         streak: dividendInfo?.consecutiveIncreaseStreak ?? 0,
       });
-      prompt = buildETFAnalysisPrompt(etfType, stock, news, dividendInfo);
+      prompt = buildETFAnalysisPrompt(etfType, stock, news, dividendInfo, peerComparison);
     } else if (assetType === 'reit') {
-      prompt = buildREITPrompt(stock, news, reitMetrics);
+      prompt = buildREITPrompt(stock, news, reitMetrics, peerComparison);
     } else if (assetType === 'bank') {
-      prompt = buildBankPrompt(stock, chart, news, priceTargets);
+      prompt = buildBankPrompt(stock, chart, news, priceTargets, peerComparison);
     } else {
       prompt = buildPrompt(stock, chart, news, priceTargets, stockProfile, peerComparison);
     }

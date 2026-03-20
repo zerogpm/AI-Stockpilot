@@ -1,6 +1,14 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { putIndustryProfile, putTickerProfile, getIndustryProfile } from '../utils/stockProfiles.js';
 
+const PROFILE_MAX_AGE_DAYS = 30;
+
+export function isProfileStale(profile, maxAgeDays = PROFILE_MAX_AGE_DAYS) {
+  if (!profile?.updatedAt) return true;
+  const age = Date.now() - new Date(profile.updatedAt).getTime();
+  return age > maxAgeDays * 24 * 60 * 60 * 1000;
+}
+
 export async function generateAndSaveProfile(stockData) {
   const {
     symbol, sector, industry, shortName, marketCap,
@@ -8,9 +16,10 @@ export async function generateAndSaveProfile(stockData) {
     profitMargins, revenueGrowth, dividendYield,
   } = stockData;
 
-  // Check if industry profile already exists — if so, only generate ticker
+  // Check if industry profile needs generation or refresh
   const existingIndustry = industry ? await getIndustryProfile(industry) : null;
-  const needsIndustry = !existingIndustry && !!industry;
+  const industryIsStale = existingIndustry && isProfileStale(existingIndustry);
+  const needsIndustry = !!industry && (!existingIndustry || industryIsStale);
 
   const prompt = buildGenerationPrompt({
     symbol, sector, industry, shortName, marketCap,
@@ -34,10 +43,12 @@ export async function generateAndSaveProfile(stockData) {
 
   const result = JSON.parse(text);
 
-  // Save industry profile (don't overwrite existing)
+  const now = new Date().toISOString();
+
+  // Save industry profile (new or refreshed)
   if (needsIndustry && result.industry) {
-    await putIndustryProfile(industry, result.industry);
-    console.log(`Auto-generated industry profile: ${industry}`);
+    await putIndustryProfile(industry, { ...result.industry, updatedAt: now });
+    console.log(`${industryIsStale ? 'Refreshed' : 'Auto-generated'} industry profile: ${industry}`);
   }
 
   // Save ticker profile
@@ -45,6 +56,7 @@ export async function generateAndSaveProfile(stockData) {
     await putTickerProfile(symbol, {
       industry: industry || undefined,
       ...result.ticker,
+      updatedAt: now,
     });
     console.log(`Auto-generated ticker profile: ${symbol}`);
   }

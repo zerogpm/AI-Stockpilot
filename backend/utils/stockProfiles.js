@@ -142,21 +142,26 @@ export async function getStockProfile(symbol, yahooIndustry) {
     const tickerProfile = tickerItem
       ? (() => { const { pk, sk, type, symbol: _s, ...rest } = tickerItem; return rest; })()
       : null;
+    const tickerUpdatedAt = tickerItem?.updatedAt || null;
 
     const industryKey = tickerProfile?.industry || yahooIndustry || null;
 
     let industryProfile = null;
+    let industryUpdatedAt = null;
     if (industryKey) {
       const industryItem = await getItem(`INDUSTRY#${industryKey}`);
       if (industryItem) {
         const { pk, sk, type, name, ...rest } = industryItem;
         industryProfile = rest;
+        industryUpdatedAt = industryItem.updatedAt || null;
       }
     }
 
     if (!industryProfile && !tickerProfile) return null;
 
-    return mergeProfiles(industryProfile, tickerProfile, industryKey);
+    const merged = mergeProfiles(industryProfile, tickerProfile, industryKey);
+    merged.updatedAt = tickerUpdatedAt || industryUpdatedAt || null;
+    return merged;
   } catch (err) {
     console.warn('DynamoDB unavailable, falling back to JSON file:', err.message);
     useFallback = true;
@@ -175,7 +180,7 @@ export async function getIndustryProfile(key) {
     const item = await getItem(`INDUSTRY#${key}`);
     if (!item) return null;
     const { pk, sk, type, name, ...rest } = item;
-    return rest;
+    return rest; // includes updatedAt if present
   } catch (err) {
     console.warn('DynamoDB read failed:', err.message);
     useFallback = true;

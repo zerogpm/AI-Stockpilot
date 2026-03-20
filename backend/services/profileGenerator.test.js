@@ -85,15 +85,33 @@ describe('generateAndSaveProfile', () => {
     }));
   });
 
-  it('skips industry generation when industry profile already exists', async () => {
+  it('skips industry generation when industry profile is fresh', async () => {
     getIndustryProfile.mockResolvedValueOnce({
       sectorPEOverride: 28,
       fairPERange: [22, 35],
+      updatedAt: new Date().toISOString(),
     });
 
     await generateAndSaveProfile(stockData);
 
     expect(putIndustryProfile).not.toHaveBeenCalled();
+    expect(putTickerProfile).toHaveBeenCalled();
+  });
+
+  it('refreshes industry profile when it is stale', async () => {
+    const staleDate = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
+    getIndustryProfile.mockResolvedValueOnce({
+      sectorPEOverride: 28,
+      fairPERange: [22, 35],
+      updatedAt: staleDate,
+    });
+
+    await generateAndSaveProfile(stockData);
+
+    expect(putIndustryProfile).toHaveBeenCalledWith('Discount Stores', expect.objectContaining({
+      sectorPEOverride: 28,
+      updatedAt: expect.any(String),
+    }));
     expect(putTickerProfile).toHaveBeenCalled();
   });
 

@@ -1,6 +1,7 @@
 import { formatLargeNumber, pct } from '../routes/analyze.js';
+import { buildPeerPromptSection } from './peerPrompt.js';
 
-export function buildBankPrompt(stock, chart, news, bankTargets) {
+export function buildBankPrompt(stock, chart, news, bankTargets, peerComparison) {
   const p = stock.price || {};
   const fd = stock.financialData || {};
   const sd = stock.summaryDetail || {};
@@ -84,7 +85,7 @@ ${targetsSection}
 
 ## Recent News Headlines
 ${newsSection || 'No recent news available.'}
-
+${peerComparison ? buildPeerPromptSection(peerComparison) : ''}
 ---
 
 ## Analysis Instructions

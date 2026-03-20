@@ -21,6 +21,7 @@ const docClient = DynamoDBDocumentClient.from(client, {
 
 async function seedProfiles() {
   const profiles = JSON.parse(readFileSync(PROFILES_PATH, 'utf-8'));
+  const now = new Date().toISOString();
   let count = 0;
 
   // Seed industry profiles
@@ -32,6 +33,7 @@ async function seedProfiles() {
         sk: 'PROFILE',
         type: 'industry',
         name,
+        updatedAt: now,
         ...data,
       },
     }));
@@ -47,6 +49,7 @@ async function seedProfiles() {
         sk: 'PROFILE',
         type: 'ticker',
         symbol,
+        updatedAt: now,
         ...data,
       },
     }));
